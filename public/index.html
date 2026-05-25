@@ -14,27 +14,49 @@
         button:active { transform: scale(0.98); }
         .btn-in { background: var(--gcash); }
         .btn-out { background: #1F2937; }
+        .btn-cancel { background: #E5E7EB; color: #4B5563; }
         
         .ticket-box { background: #F9FAFB; padding: 20px; border-radius: 12px; border: 2px dashed #D1D5DB; margin-top: 20px; }
         .receipt-box { background: #FFFFFF; padding: 20px; border-radius: 8px; border: 1px solid #E5E7EB; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 20px; text-align: left; animation: slideDown 0.4s ease-out; }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
-        #mainUi, #waitUi, #receiptUi { display: none; }
+        #mainUi, #confirmUi, #waitUi, #receiptUi { display: none; }
         .active-ui { display: block !important; }
     </style>
 </head>
 <body>
 
 <div class="wallet-card">
-    <h2 style="color: var(--gcash); margin-top:0;">GCash Kiosk Automatic</h2>
+    <h2 style="color: var(--gcash); margin-top:0;">GCash Kiosk Automatic System/h2>
     
     <div id="mainUi" class="active-ui">
         <input type="tel" id="mobile" placeholder="09XXXXXXXXX" maxlength="11">
         <input type="number" id="amount" placeholder="Amount (PHP)">
         
-        <button class="btn-in" onclick="requestTransaction('deposit')">CASH-IN (Deposit)</button>
-        <button class="btn-out" onclick="requestTransaction('withdraw')">CASH-OUT (Withdraw)</button>
+        <button class="btn-in" onclick="reviewTransaction('deposit')">CASH-IN (Deposit)</button>
+        <button class="btn-out" onclick="reviewTransaction('withdraw')">CASH-OUT (Withdraw)</button>
         <div id="errorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
+    </div>
+
+    <div id="confirmUi">
+        <h3 style="margin-top:0;">Review Details</h3>
+        <p style="color:#6B7280; font-size:14px; margin-bottom: 20px;">Please ensure the mobile number and amount are exactly correct.</p>
+        
+        <div class="ticket-box" style="text-align: left; margin-top: 0; margin-bottom: 20px; border-color: var(--gcash);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <span style="color:#6B7280;">Action:</span> <strong id="confirmType" style="text-transform: uppercase;"></strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <span style="color:#6B7280;">GCash Number:</span> <strong id="confirmMobile" style="font-size: 18px; color: var(--text);"></strong>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <span style="color:#6B7280;">Amount:</span> <strong style="font-size: 18px; color: #10B981;">₱<span id="confirmAmt"></span></strong>
+            </div>
+        </div>
+
+        <button class="btn-in" onclick="proceedTransaction()">Yes, Generate Ticket</button>
+        <button class="btn-cancel" onclick="cancelTransaction()">No, Edit Details</button>
+        <div id="confirmErrorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
     </div>
 
     <div id="waitUi">
@@ -58,8 +80,10 @@
 
 <script>
     let currentPoller = null;
+    let pendingTx = null; // Stores the data temporarily while the user reviews it
 
-    async function requestTransaction(type) {
+    // 1. Intercept the click and show the confirmation screen
+    function reviewTransaction(type) {
         const mobile = document.getElementById('mobile').value.trim();
         const amount = document.getElementById('amount').value;
         const errorEl = document.getElementById('errorMsg');
@@ -69,28 +93,57 @@
         if(mobile.length !== 11) return errorEl.innerText = "Enter a valid 11-digit mobile number";
         if(!amount || amount <= 0) return errorEl.innerText = "Enter a valid amount";
 
+        // Save data to our temporary object
+        pendingTx = { type, amount, mobile, provider: 'GCash' };
+
+        // Populate the confirmation UI
+        document.getElementById('confirmType').innerText = type === 'deposit' ? 'Cash-In' : 'Cash-Out';
+        document.getElementById('confirmType').style.color = type === 'deposit' ? '#059669' : '#DC2626';
+        document.getElementById('confirmMobile').innerText = mobile;
+        document.getElementById('confirmAmt').innerText = parseFloat(amount).toFixed(2);
+
+        // Swap Screens
+        document.getElementById('mainUi').classList.remove('active-ui');
+        document.getElementById('confirmUi').classList.add('active-ui');
+    }
+
+    // 2. User clicked "No", send them back to fix it
+    function cancelTransaction() {
+        pendingTx = null; // Clear the temporary data
+        document.getElementById('confirmUi').classList.remove('active-ui');
+        document.getElementById('mainUi').classList.add('active-ui');
+    }
+
+    // 3. User clicked "Yes", actually send it to the server
+    async function proceedTransaction() {
+        const errorEl = document.getElementById('confirmErrorMsg');
+        errorEl.innerText = "Generating ticket...";
+        errorEl.style.color = "#6B7280";
+
         try {
             const res = await fetch('/transaction/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, amount, mobile, provider: 'GCash' })
+                body: JSON.stringify(pendingTx)
             });
             
             const data = await res.json();
             
             if(res.ok) {
-                document.getElementById('mainUi').classList.remove('active-ui');
+                document.getElementById('confirmUi').classList.remove('active-ui');
                 document.getElementById('waitUi').classList.add('active-ui');
                 
-                document.getElementById('waitType').innerText = type === 'deposit' ? 'CASH-IN (Deposit)' : 'CASH-OUT (Withdraw)';
+                document.getElementById('waitType').innerText = pendingTx.type === 'deposit' ? 'CASH-IN' : 'CASH-OUT';
                 document.getElementById('displayCode').innerText = data.code;
-                document.getElementById('displayAmt').innerText = amount;
+                document.getElementById('displayAmt').innerText = pendingTx.amount;
 
                 currentPoller = setInterval(() => checkStatus(data.reference_id), 2000);
             } else {
+                errorEl.style.color = "red";
                 errorEl.innerText = data.error || "Failed to generate ticket.";
             }
         } catch (error) {
+            errorEl.style.color = "red";
             errorEl.innerText = "Cannot connect to server.";
         }
     }
@@ -116,7 +169,6 @@
 
         const color = tx.type === 'deposit' ? '#059669' : '#DC2626';
         
-        // 1. Check if the cashier attached an image
         let attachedImageHtml = '';
         if (tx.receipt_image) {
             attachedImageHtml = `
@@ -127,7 +179,6 @@
             `;
         }
 
-        // 2. Build the final view
         document.getElementById('finalReceipt').innerHTML = `
             <div style="font-size:16px; font-style:italic; color:#4B5563; margin-bottom: 20px; text-align:center; padding: 12px; background:#F3F4F6; border-radius:8px; font-weight:bold;">
                 "${tx.greeting}"
