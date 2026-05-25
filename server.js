@@ -12,11 +12,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 let transactions = [];
 
 // --- SECURITY CONFIG ---
-const MERCHANT_PIN = "1234"; 
+const axios = require("axios");
 
-function generateOTP() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-}
+// --- XENDIT API CONFIG ---
+// We will put your real test key here later. For now, it's a placeholder.
+const XENDIT_SECRET_KEY = "xnd_development_jZQrtyIarAWPSrb0VjeVnYLGPjw9P81kBtCvmbUkZZPc6Y1GgNywQWUdEykxs"; 
+// Xendit requires the key to be Base64 encoded for security
+const XENDIT_AUTH = Buffer.from(XENDIT_SECRET_KEY + ":").toString("base64");
+
+// ... (Keep your /deposit routes exact the same for now) ...
+
 
 // --- API ENDPOINTS ---
 
@@ -78,52 +83,77 @@ app.post("/merchant/confirm-deposit", (req, res) => {
     });
 });
 
-// 4. User Requests Cash-Out (Withdraw)
-app.post("/withdraw/request", (req, res) => {
-    const { amount, mobile, provider } = req.body;
+// 4. Automated Cash-Out: Generate Real GCash QR via Xendit
+app.post("/withdraw/request", async (req, res) => {
+    const { amount, mobile } = req.body;
     if (amount <= 0) return res.status(400).json({ error: "Invalid amount" });
 
-    // Generates the Code/QR data
-    const code = "W-" + Math.floor(100000 + Math.random() * 900000).toString();
-    const ref = uuidv4();
+    const ref_id = "CASH-OUT-" + uuidv4();
 
-    transactions.push({
-        id: transactions.length + 1,
-        type: "withdraw",
-        amount: parseFloat(amount),
-        mobile: mobile,
-        provider: provider,
-        status: "pending", 
-        reference_id: ref,
-        code: code
-    });
+    try {
+        // Send request to Xendit to create a GCash Payment request
+        const xenditResponse = await axios.post("https://api.xendit.co/ewallets/charges", {
+            reference_id: ref_id,
+            currency: "PHP",
+            amount: parseFloat(amount),
+            checkout_method: "ONE_TIME_PAYMENT",
+            channel_code: "PH_GCASH",
+            channel_properties: {
+                // Xendit requires a success redirect URL, we'll just send them back to the app
+                success_redirect_url: "https://auto-wallet-kiosk.onrender.com",
+                failure_redirect_url: "https://auto-wallet-kiosk.onrender.com"
+            }
+        }, {
+            headers: { "Authorization": `Basic ${XENDIT_AUTH}` }
+        });
 
-    res.json({ message: "QR Generated", code: code });
+        const xenditData = xenditResponse.data;
+
+        // Save to our pending memory so the Webhook can find it later
+        transactions.push({
+            id: transactions.length + 1,
+            type: "withdraw",
+            amount: parseFloat(amount),
+            mobile: mobile,
+            status: "pending", 
+            reference_id: ref_id // We track it using Xendit's reference ID
+        });
+
+        // Xendit sends back a checkout URL (which we will turn into a QR code on the frontend)
+        res.json({ 
+            message: "Xendit QR Generated", 
+            checkout_url: xenditData.actions.desktop_web_checkout_url,
+            reference_id: ref_id
+        });
+
+    } catch (error) {
+        console.error("Xendit API Error:", error.response ? error.response.data : error.message);
+        res.status(500).json({ error: "Failed to connect to GCash API" });
+    }
 });
 
-// 5. Merchant Confirms Cash-Out (After receiving money on real GCash App)
-app.post("/merchant/confirm-withdraw", (req, res) => {
-    const { pin, code } = req.body;
-    if (pin !== MERCHANT_PIN) return res.status(401).json({ error: "Unauthorized" });
+// 5. THE AUTOMATOR: Listen for Xendit's "Payment Success" signal
+app.post("/xendit-webhook", (req, res) => {
+    const webhookData = req.body;
 
-    const tx = transactions.find(t => t.code === code && t.status === "pending" && t.type === "withdraw");
-    if (!tx) return res.status(404).json({ error: "Invalid or expired code" });
+    // Check if the payment actually succeeded
+    if (webhookData.event === "ewallet.capture" && webhookData.data.status === "SUCCEEDED") {
+        
+        const ref_id = webhookData.data.reference_id;
+        const tx = transactions.find(t => t.reference_id === ref_id && t.status === "pending");
 
-    // Mark ticket as completed (No fake balance checks needed!)
-    tx.status = "completed";
-    tx.code = null; 
-
-    res.json({
-        message: "Receipt Generated",
-        receipt: {
-            tx_id: tx.reference_id,
-            amount: tx.amount,
-            mobile: tx.mobile,
-            provider: tx.provider,
-            date: new Date().toLocaleString(),
-            type: "CASH-OUT"
+        if (tx) {
+            // Mark it complete in our system!
+            tx.status = "completed";
+            console.log(`[SUCCESS] GCash payment received for ${tx.mobile}. Ready to print receipt!`);
+            
+            // NOTE: In the next step, we will use WebSockets so this instantly triggers 
+            // the receipt printer on the cashier's screen without them clicking anything!
         }
-    });
+    }
+    
+    // Always reply 200 OK so Xendit knows we received the message
+    res.sendStatus(200); 
 });
 
 const PORT = process.env.PORT || 3000;
