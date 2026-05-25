@@ -26,7 +26,7 @@
 <body>
 
 <div class="wallet-card">
-    <h2 style="color: var(--gcash); margin-top:0;">GCash OTC Kiosk</h2>
+    <h2 style="color: var(--gcash); margin-top:0;">GCash Kiosk Automatic</h2>
     
     <div id="mainUi" class="active-ui">
         <input type="tel" id="mobile" placeholder="09XXXXXXXXX" maxlength="11">
@@ -116,8 +116,20 @@
 
         const color = tx.type === 'deposit' ? '#059669' : '#DC2626';
         
+        // 1. Check if the cashier attached an image
+        let attachedImageHtml = '';
+        if (tx.receipt_image) {
+            attachedImageHtml = `
+                <div style="margin-top: 15px; border-top: 1px dashed #D1D5DB; padding-top: 15px;">
+                    <div style="font-size:12px; color:#6B7280; text-align:center; margin-bottom:10px;">ATTACHED PROOF OF TRANSACTION</div>
+                    <img src="${tx.receipt_image}" style="width: 100%; border-radius: 8px; border: 1px solid #E5E7EB; box-sizing: border-box;">
+                </div>
+            `;
+        }
+
+        // 2. Build the final view
         document.getElementById('finalReceipt').innerHTML = `
-            <div style="font-size:18px; font-style:italic; color:#4B5563; margin-bottom: 20px; text-align:center; padding: 10px; background:#F3F4F6; border-radius:8px;">
+            <div style="font-size:16px; font-style:italic; color:#4B5563; margin-bottom: 20px; text-align:center; padding: 12px; background:#F3F4F6; border-radius:8px; font-weight:bold;">
                 "${tx.greeting}"
             </div>
 
@@ -134,6 +146,8 @@
             <div style="font-size:10px; color:#9CA3AF; text-align:center;">
                 Date: ${tx.date}<br>Ref: ${tx.reference_id}
             </div>
+            
+            ${attachedImageHtml}
         `;
     }
 </script>
