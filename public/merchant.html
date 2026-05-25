@@ -8,11 +8,14 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111827; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;}
         .dashboard { background: #1F2937; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         input { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 8px; border: none; font-size: 24px; font-weight: bold; text-align: center; box-sizing: border-box; letter-spacing: 2px;}
-        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; background: #10B981; color: white; transition: 0.1s;}
+        input[type="text"].greeting-input { font-size: 16px; font-weight: normal; letter-spacing: normal; text-align: left; background: #374151; color: white; margin-top: 15px;}
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; transition: 0.1s;}
         button:active { transform: scale(0.98); }
+        .btn-green { background: #10B981; }
+        .btn-blue { background: #3B82F6; }
+        .btn-gray { background: #374151; margin-top: 10px; }
         
-        /* New Styles for the Cashier Receipt */
-        .receipt-box { background: #111827; padding: 20px; border-radius: 8px; border: 1px solid #374151; margin-top: 20px; text-align: left; }
+        .receipt-box { background: #111827; padding: 20px; border-radius: 8px; border: 1px solid #374151; margin-top: 10px; text-align: left; }
         #receiptScreen { display: none; }
     </style>
 </head>
@@ -20,37 +23,37 @@
 
 <div class="dashboard" id="inputScreen">
     <h2 style="margin-top:0;">Cashier Terminal</h2>
-    <p style="color:#9CA3AF; margin-bottom:25px; font-size: 14px;">Verify the GCash transfer, then enter the customer's Ticket Code below to approve.</p>
+    <p style="color:#9CA3AF; margin-bottom:25px; font-size: 14px;">Verify GCash transfer, then enter the Ticket Code.</p>
     
     <input type="text" id="ticketCode" placeholder="000000" maxlength="6">
-    <button onclick="approveTransaction()">APPROVE & GENERATE RECEIPT</button>
+    <button class="btn-green" onclick="approveTransaction()">VERIFY OTP</button>
     
-    <div id="status" style="margin-top:20px; font-weight:bold; min-height: 45px;"></div>
+    <div id="status" style="margin-top:20px; font-weight:bold; min-height: 20px;"></div>
 </div>
 
 <div class="dashboard" id="receiptScreen">
-    <div style="color:#10B981; font-size:40px; margin-bottom:10px;">✅</div>
-    <h2 style="margin-top:0;">Approved!</h2>
-    <p style="color:#9CA3AF; font-size: 14px;">Receipt sent to customer. Your copy is below.</p>
+    <div style="color:#10B981; font-size:30px; margin-bottom:5px;">✅</div>
+    <h3 style="margin-top:0; margin-bottom:5px;">OTP Verified</h3>
     
     <div class="receipt-box" id="merchantReceipt"></div>
     
-    <button style="margin-top:20px; background:#374151;" onclick="nextTransaction()">Clear / Next Customer</button>
+    <input type="text" id="greetingMsg" class="greeting-input" placeholder="Type a greeting (Optional)">
+    <button class="btn-blue" onclick="sendToCustomer()">SEND RECEIPT TO CUSTOMER</button>
+    
+    <div id="sendStatus" style="margin-top:15px; font-weight:bold; min-height: 20px; color:#10B981;"></div>
 </div>
 
 <script>
+    let currentRefId = ""; // Stores the ID to send the final receipt
+
     async function approveTransaction() {
         const code = document.getElementById('ticketCode').value.trim();
         const statusEl = document.getElementById('status');
-        
         statusEl.style.color = "#EF4444"; 
 
-        if(!code || code.length !== 6) {
-            statusEl.innerText = "Please enter a valid 6-digit code";
-            return;
-        }
+        if(!code || code.length !== 6) return statusEl.innerText = "Please enter a valid 6-digit code";
         
-        statusEl.innerText = "Processing...";
+        statusEl.innerText = "Verifying...";
         statusEl.style.color = "white";
 
         try {
@@ -59,18 +62,15 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ pin: "1234", code: code }) 
             });
-
             const data = await res.json();
 
             if (res.ok) {
-                // 1. Hide the input screen, show the receipt screen
-                document.getElementById('inputScreen').style.display = 'none';
-                document.getElementById('receiptScreen').style.display = 'block';
+                // Save the reference ID for the next step
+                currentRefId = data.receipt.reference_id;
                 
+                // Build the Merchant Receipt
                 const tx = data.receipt;
                 const color = tx.type === 'deposit' ? '#10B981' : '#EF4444';
-                
-                // 2. Build the exact HTML for the merchant's copy
                 document.getElementById('merchantReceipt').innerHTML = `
                     <div style="text-align:center; font-weight:bold; margin-bottom:15px; border-bottom:1px solid #374151; padding-bottom:10px;">MERCHANT COPY</div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -79,32 +79,52 @@
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                         <span style="color:#9CA3AF;">Mobile:</span> <strong>${tx.mobile}</strong>
                     </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between;">
                         <span style="color:#9CA3AF;">Amount:</span> <strong>₱${tx.amount.toFixed(2)}</strong>
-                    </div>
-                    <div style="font-size:10px; color:#6B7280; text-align:center;">
-                        Date: ${tx.date}<br>Ref: ${tx.reference_id}
                     </div>
                 `;
                 
-                // 3. Reset the input box silently in the background
+                // Swap Screens
+                document.getElementById('inputScreen').style.display = 'none';
+                document.getElementById('receiptScreen').style.display = 'block';
+                
                 document.getElementById('ticketCode').value = ""; 
                 statusEl.innerText = "";
             } else {
-                statusEl.style.color = "#EF4444"; 
                 statusEl.innerText = data.error || "Transaction failed.";
             }
         } catch (error) {
-            console.error("Connection Error:", error);
-            statusEl.style.color = "#EF4444"; 
-            statusEl.innerText = "Cannot connect to server. Check your connection.";
+            statusEl.innerText = "Cannot connect to server.";
         }
     }
 
-    // Function to flip the UI back to the start for the next person in line
-    function nextTransaction() {
-        document.getElementById('receiptScreen').style.display = 'none';
-        document.getElementById('inputScreen').style.display = 'block';
+    async function sendToCustomer() {
+        const greeting = document.getElementById('greetingMsg').value.trim();
+        const statusEl = document.getElementById('sendStatus');
+        
+        statusEl.innerText = "Sending...";
+
+        try {
+            const res = await fetch('/merchant/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: "1234", reference_id: currentRefId, greeting: greeting }) 
+            });
+
+            if (res.ok) {
+                statusEl.innerText = "✅ Sent to Customer!";
+                setTimeout(() => {
+                    // Reset everything for the next customer
+                    document.getElementById('receiptScreen').style.display = 'none';
+                    document.getElementById('inputScreen').style.display = 'block';
+                    document.getElementById('greetingMsg').value = "";
+                    statusEl.innerText = "";
+                }, 2000);
+            }
+        } catch (error) {
+            statusEl.innerText = "Failed to send.";
+            statusEl.style.color = "#EF4444";
+        }
     }
 </script>
 </body>
