@@ -99,12 +99,14 @@ app.post("/withdraw/request", async (req, res) => {
             checkout_method: "ONE_TIME_PAYMENT",
             channel_code: "PH_GCASH",
             channel_properties: {
-                // Xendit requires a success redirect URL, we'll just send them back to the app
                 success_redirect_url: "https://auto-wallet-kiosk.onrender.com",
                 failure_redirect_url: "https://auto-wallet-kiosk.onrender.com"
             }
         }, {
-            headers: { "Authorization": `Basic ${XENDIT_AUTH}` }
+            headers: { 
+                "Authorization": `Basic ${XENDIT_AUTH}`,
+                "api-version": "2022-07-31" // <--- ADD THIS LINE
+            }
         });
 
         const xenditData = xenditResponse.data;
