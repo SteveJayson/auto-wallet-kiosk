@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Top-Up Wallet</title>
+    <style>
+        /* (Keep your exact same CSS from the previous step here) */
+        :root { --primary: #4F46E5; --bg: #F3F4F6; --card: #FFFFFF; --text: #1F2937; --gcash: #007EE5; --maya: #00D16C; --grab: #00B14F; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .wallet-card { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 30px; box-sizing: border-box; }
+        .balance-section { text-align: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #E5E7EB; }
+        .balance-title { font-size: 14px; color: #6B7280; text-transform: uppercase; letter-spacing: 1px; }
+        .balance-amount { font-size: 42px; font-weight: bold; margin: 10px 0; color: var(--text); }
+        .section-title { font-size: 14px; font-weight: 600; color: #4B5563; margin-bottom: 15px; }
+        .provider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px; }
+        .provider-btn { padding: 15px 10px; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; color: white; cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
+        .provider-btn:active { transform: scale(0.96); }
+        .provider-btn.gcash { background: var(--gcash); }
+        .provider-btn.maya { background: var(--maya); opacity: 0.6; }
+        .provider-btn.grab { background: var(--grab); opacity: 0.6; grid-column: span 2; }
+        .provider-btn.disabled { cursor: not-allowed; }
+        #transactionArea { display: none; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .action-group { margin-bottom: 20px; padding: 15px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 12px; }
+        input { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; }
+        button.action-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; color: white; }
+        .btn-deposit { background: var(--primary); }
+        .btn-withdraw { background: #1F2937; }
+        #status { text-align: center; font-size: 14px; margin-top: 15px; min-height: 20px; color: #059669; }
+    </style>
+</head>
+<body>
+
+<div class="wallet-card">
+    <div class="section-title">Select e-Wallet</div>
+    <div class="provider-grid">
+        <button class="provider-btn gcash" onclick="selectProvider('gcash')">GCash</button>
+        <button class="provider-btn maya disabled" onclick="showComingSoon('Maya')">Maya</button>
+        <button class="provider-btn grab disabled" onclick="showComingSoon('GrabPay')">GrabPay</button>
+    </div>
+
+    <div id="transactionArea">
+        <div class="section-title" id="activeProviderTitle" style="color: var(--gcash); text-align: center; font-size: 16px; margin-bottom: 15px;">Using GCash</div>
+        
+        <input type="tel" id="mobileNumber" placeholder="Enter Mobile Number (09...)" maxlength="11" style="border: 2px solid var(--gcash);">
+
+        <div class="action-group">
+            <input type="number" id="depositAmount" placeholder="Amount to Top-Up">
+            <button class="action-btn btn-deposit" onclick="handleDeposit()">Generate Cash-In OTP</button>
+        </div>
+
+        <div class="action-group">
+            <input type="number" id="withdrawAmount" placeholder="Amount to Cash-Out">
+            <button class="action-btn btn-withdraw" onclick="handleWithdraw()">Generate Cash-Out QR</button>
+        </div>
+    </div>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    const USER_ID = 1; 
+    let selectedProvider = null;
+
+    function selectProvider(provider) {
+        if (provider === 'gcash') {
+            selectedProvider = 'GCash';
+            document.getElementById('transactionArea').style.display = 'block';
+            showStatus("Enter GCash number and amount.", "#007EE5");
+        }
+    }
+
+    function showComingSoon(providerName) {
+        document.getElementById('transactionArea').style.display = 'none';
+        showStatus(`${providerName} integration is coming soon!`, "#6B7280");
+    }
+
+    function showStatus(msg, color = "#059669") {
+        const el = document.getElementById('status');
+        el.style.color = color;
+        el.innerHTML = msg; 
+        setTimeout(() => { if(el.innerText === msg) el.innerText = ""; }, 8000); 
+    }
+
+    async function refreshBalance() {
+        const res = await fetch(`/balance/${USER_ID}`);
+        const data = await res.json();
+        document.getElementById('balanceDisplay').innerText = data.balance.toFixed(2);
+    }
+
+    // UPDATED: Now grabs the mobile number
+    async function handleDeposit() {
+        const mobile = document.getElementById('mobileNumber').value;
+        const amount = document.getElementById('depositAmount').value;
+        
+        if (!mobile || mobile.length < 10) return showStatus("Enter a valid mobile number", "#DC2626");
+        if (!amount || amount <= 0) return showStatus("Enter a valid amount", "#DC2626");
+
+        const res = await fetch('/deposit/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: USER_ID, amount: amount, mobile: mobile, provider: selectedProvider })
+        });
+        
+        const data = await res.json();
+        
+        if(res.ok) {
+            document.getElementById('depositAmount').value = '';
+            showStatus(`CASH-IN TO: ${mobile}<br><br>SHOW THIS OTP TO CASHIER: <br><span style="font-size:24px; font-weight:bold; letter-spacing:3px;">${data.otp}</span>`, "#4F46E5");
+        }
+    }
+
+    // UPDATED: Now grabs the mobile number
+    async function handleWithdraw() {
+        const mobile = document.getElementById('mobileNumber').value;
+        const amount = document.getElementById('withdrawAmount').value;
+        
+        if (!mobile || mobile.length < 10) return showStatus("Enter a valid mobile number", "#DC2626");
+        if (!amount || amount <= 0) return showStatus("Enter a valid amount", "#DC2626");
+
+        const res = await fetch('/withdraw/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: USER_ID, amount: amount, mobile: mobile, provider: selectedProvider })
+        });
+
+        const data = await res.json();
+        
+        if (res.ok) {
+            document.getElementById('withdrawAmount').value = '';
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${data.code}`;
+            
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = `
+                <div style="color:#1F2937; font-size:12px; margin-bottom:5px;">CASH-OUT FROM: <strong>${mobile}</strong></div>
+                <div style="color:#1F2937; font-weight:bold; margin-bottom:10px;">Show QR to Cashier:</div>
+                <img src="${qrUrl}" alt="QR Code" style="border-radius: 8px; border: 2px solid #E5E7EB; width: 150px; height: 150px;">
+                <div style="letter-spacing:2px; font-size:18px; margin-top:5px; font-weight:bold;">${data.code}</div>
+            `;
+            setTimeout(() => statusEl.innerHTML = "", 30000);
+        } else {
+            showStatus(data.error, "#DC2626");
+        }
+    }
+</script>
+</body>
+</html>
