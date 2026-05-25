@@ -5,187 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cashier Dashboard</title>
     <style>
-        :root {
-            --merchant: #059669;
-            --bg: #F3F4F6;
-            --card: #FFFFFF;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .dashboard-card {
-            background: var(--card);
-            width: 100%;
-            max-width: 400px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            padding: 30px;
-            box-sizing: border-box;
-        }
-        h2 { text-align: center; color: #1F2937; margin-top: 0; }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #D1D5DB;
-            border-radius: 8px;
-            font-size: 18px;
-            margin-bottom: 15px;
-            box-sizing: border-box;
-            text-align: center;
-            letter-spacing: 2px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            background: var(--merchant);
-            color: white;
-        }
-        #dashboardArea { display: none; }
-        #status { text-align: center; margin-top: 15px; font-weight: bold; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111827; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;}
+        .dashboard { background: #1F2937; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 8px; border: none; font-size: 24px; font-weight: bold; text-align: center; box-sizing: border-box; letter-spacing: 2px;}
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; background: #10B981; color: white; transition: 0.1s;}
+        button:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
 
-<body>
-
-<div class="dashboard-card">
+<div class="dashboard">
+    <h2 style="margin-top:0;">Cashier Terminal</h2>
+    <p style="color:#9CA3AF; margin-bottom:25px; font-size: 14px;">Verify the GCash transfer, then enter the customer's Ticket Code below to approve.</p>
     
-    <div id="loginArea">
-        <h2>Cashier Login</h2>
-        <input type="password" id="pinInput" placeholder="Enter PIN">
-        <button onclick="login()">Access System</button>
-        <div id="loginStatus" style="color: red; text-align: center; margin-top: 10px;"></div>
-    </div>
-
-    <div id="dashboardArea">
-        
-        <h2>Approve Deposit</h2>
-        <p style="text-align: center; color: #6B7280; font-size: 14px;">Enter customer's 6-digit OTP</p>
-        <input type="text" id="otpInput" placeholder="000000" maxlength="6">
-        <button onclick="confirmDeposit()">Credit Account (Receive Cash)</button>
-        
-        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #E5E7EB;">
-
-        <h2>Process Cash-Out</h2>
-        <p style="text-align: center; color: #6B7280; font-size: 14px;">Scan QR or type code (e.g. W-123456)</p>
-        <input type="text" id="withdrawCodeInput" placeholder="W-000000">
-        <button style="background: #1F2937;" onclick="confirmWithdraw()">Approve & Print Receipt</button>
-
-        <div id="status"></div>
-
-        <div id="receiptArea" style="display:none; margin-top:20px; background:#f9fafb; padding:15px; border:2px dashed #9CA3AF; font-family:monospace; text-align:left; font-size: 14px;">
-             </div>
-
-    </div>
-
+    <input type="text" id="ticketCode" placeholder="000000" maxlength="6">
+    <button onclick="approveTransaction()">APPROVE & PRINT RECEIPT</button>
+    
+    <div id="status" style="margin-top:20px; font-weight:bold; min-height: 45px;"></div>
 </div>
 
 <script>
-    let sessionPin = null;
-
-    async function login() {
-        const pin = document.getElementById('pinInput').value;
-        const res = await fetch('/merchant/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: pin })
-        });
-        if (res.ok) {
-            sessionPin = pin;
-            document.getElementById('loginArea').style.display = 'none';
-            document.getElementById('dashboardArea').style.display = 'block';
-        } else {
-            document.getElementById('loginStatus').innerText = "Incorrect PIN";
-        }
-    }
-
-    async function confirmDeposit() {
-        const otp = document.getElementById('otpInput').value;
+    async function approveTransaction() {
+        const code = document.getElementById('ticketCode').value.trim();
         const statusEl = document.getElementById('status');
+        
+        statusEl.style.color = "#EF4444"; 
+
+        if(!code || code.length !== 6) {
+            statusEl.innerText = "Please enter a valid 6-digit code";
+            return;
+        }
         
         statusEl.innerText = "Processing...";
-        statusEl.style.color = "#4B5563";
+        statusEl.style.color = "white";
 
-        const res = await fetch('/merchant/confirm-deposit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: sessionPin, otp: otp })
-        });
+        try {
+            const res = await fetch('/merchant/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: "1234", code: code }) 
+            });
 
-        const data = await res.json();
+            const data = await res.json();
 
-        if (res.ok) {
-            statusEl.innerText = "";
-            document.getElementById('otpInput').value = '';
-            
-            // BUILD THE DIGITAL RECEIPT FOR CASH-IN
-            const receiptHTML = `
-                <div style="text-align:center; font-weight:bold; margin-bottom:10px;">--- OFFICIAL RECEIPT ---</div>
-                <div>TYPE: <strong style="color:#059669;">CASH-IN</strong></div>
-                <div>PROVIDER: <strong>${data.receipt.provider}</strong></div>
-                <div>ACCOUNT: <strong>${data.receipt.mobile}</strong></div>
-                <div>AMOUNT: <strong>₱${data.receipt.amount.toFixed(2)}</strong></div>
-                <div>DATE: ${data.receipt.date}</div>
-                <div style="font-size:10px; margin-top:10px; color:#6B7280; word-break:break-all;">REF: ${data.receipt.tx_id}</div>
-                <div style="text-align:center; margin-top:15px; font-weight:bold; color:#059669;">✅ PAYMENT RECEIVED</div>
-            `;
-            
-            document.getElementById('receiptArea').innerHTML = receiptHTML;
-            document.getElementById('receiptArea').style.display = 'block';
-        } else {
-            statusEl.style.color = "red";
-            statusEl.innerText = data.error;
-            document.getElementById('receiptArea').style.display = 'none';
-        }
-    }
-
-    async function confirmWithdraw() {
-        const code = document.getElementById('withdrawCodeInput').value;
-        const statusEl = document.getElementById('status');
-        
-        const res = await fetch('/merchant/confirm-withdraw', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: sessionPin, code: code })
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-            statusEl.innerText = "";
-            document.getElementById('withdrawCodeInput').value = '';
-            
-            // BUILD THE DIGITAL RECEIPT
-            const receiptHTML = `
-                <div style="text-align:center; font-weight:bold; margin-bottom:10px;">--- OFFICIAL RECEIPT ---</div>
-                <div>TYPE: <strong style="color:red;">CASH-OUT</strong></div>
-                <div>PROVIDER: <strong>${data.receipt.provider}</strong></div>
-                <div>ACCOUNT: <strong>${data.receipt.mobile}</strong></div>
-                <div>AMOUNT: <strong>₱${data.receipt.amount.toFixed(2)}</strong></div>
-                <div>DATE: ${data.receipt.date}</div>
-                <div style="font-size:10px; margin-top:10px; color:#6B7280; word-break:break-all;">REF: ${data.receipt.tx_id}</div>
-                <div style="text-align:center; margin-top:15px; font-weight:bold; color:#059669;">✅ HAND CASH TO CUSTOMER</div>
-            `;
-            
-            // Show it on screen!
-            document.getElementById('receiptArea').innerHTML = receiptHTML;
-            document.getElementById('receiptArea').style.display = 'block';
-        } else {
-            statusEl.style.color = "red";
-            statusEl.innerText = data.error;
-            document.getElementById('receiptArea').style.display = 'none';
+            if (res.ok) {
+                statusEl.style.color = "#10B981"; 
+                statusEl.innerHTML = `✅ Approved!<br><span style="font-size:14px; font-weight:normal; color:#9CA3AF;">Receipt automatically sent to customer screen.</span>`;
+                document.getElementById('ticketCode').value = ""; 
+                setTimeout(() => { statusEl.innerText = ""; }, 5000); 
+            } else {
+                statusEl.style.color = "#EF4444"; 
+                statusEl.innerText = data.error || "Transaction failed.";
+            }
+        } catch (error) {
+            console.error("Connection Error:", error);
+            statusEl.style.color = "#EF4444"; 
+            statusEl.innerText = "Cannot connect to server. Check your connection.";
         }
     }
 </script>
-
 </body>
+</html>

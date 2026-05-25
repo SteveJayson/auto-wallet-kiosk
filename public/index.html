@@ -3,266 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto Top-Up Wallet Kiosk</title>
+    <title>Customer Kiosk</title>
     <style>
-        :root {
-            --primary: #4F46E5;
-            --bg: #F3F4F6;
-            --card: #FFFFFF;
-            --text: #1F2937;
-            --gcash: #007EE5;
-            --maya: #00D16C;
-            --grab: #00B14F;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .wallet-card {
-            background: var(--card);
-            width: 100%;
-            max-width: 400px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            padding: 30px;
-            box-sizing: border-box;
-        }
-        .header-title {
-            text-align: center;
-            font-size: 22px;
-            font-weight: bold;
-            color: var(--text);
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #E5E7EB;
-        }
-        .section-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #4B5563;
-            margin-bottom: 15px;
-        }
-        .provider-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 25px;
-        }
-        .provider-btn {
-            padding: 15px 10px;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-        }
-        .provider-btn:active { transform: scale(0.96); }
-        .provider-btn.gcash { background: var(--gcash); }
-        .provider-btn.maya { background: var(--maya); opacity: 0.6; }
-        .provider-btn.grab { background: var(--grab); opacity: 0.6; grid-column: span 2; }
-        .provider-btn.disabled { cursor: not-allowed; }
+        :root { --primary: #4F46E5; --bg: #F3F4F6; --card: #FFFFFF; --text: #1F2937; --gcash: #007EE5; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .wallet-card { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 30px; text-align: center; }
+        input { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; text-align: center; }
+        input[type=tel] { font-weight: bold; font-size: 18px; letter-spacing: 2px; border: 2px solid var(--gcash); }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; margin-bottom: 10px; transition: 0.1s; }
+        button:active { transform: scale(0.98); }
+        .btn-in { background: var(--gcash); }
+        .btn-out { background: #1F2937; }
         
-        #transactionArea {
-            display: none;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .action-group {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #F9FAFB;
-            border: 1px solid #E5E7EB;
-            border-radius: 12px;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #D1D5DB;
-            border-radius: 8px;
-            font-size: 16px;
-            margin-bottom: 10px;
-            box-sizing: border-box;
-            text-align: center;
-            letter-spacing: 1px;
-        }
-        input[type=tel] {
-            font-weight: bold;
-            font-size: 18px;
-            letter-spacing: 2px;
-            border: 2px solid var(--gcash);
-        }
-        button.action-btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            color: white;
-        }
-        .btn-deposit { background: var(--primary); }
-        .btn-withdraw { background: #1F2937; }
+        .ticket-box { background: #F9FAFB; padding: 20px; border-radius: 12px; border: 2px dashed #D1D5DB; margin-top: 20px; }
+        .receipt-box { background: #FFFFFF; padding: 20px; border-radius: 8px; border: 1px solid #E5E7EB; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 20px; text-align: left; animation: slideDown 0.4s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
-        #status {
-            text-align: center;
-            font-size: 14px;
-            margin-top: 15px;
-            min-height: 20px;
-            color: #059669;
-        }
-        
-        /* Utility classes for the generated QR state */
-        .qr-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: #F9FAFB;
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #E5E7EB;
-        }
+        #mainUi, #waitUi, #receiptUi { display: none; }
+        .active-ui { display: block !important; }
     </style>
 </head>
 <body>
 
 <div class="wallet-card">
-    <div class="header-title">Self-Service Kiosk</div>
-
-    <div class="section-title">Select e-Wallet Provider</div>
-    <div class="provider-grid">
-        <button class="provider-btn gcash" onclick="selectProvider('gcash')">GCash</button>
-        <button class="provider-btn maya disabled" onclick="showComingSoon('Maya')">Maya</button>
-        <button class="provider-btn grab disabled" onclick="showComingSoon('GrabPay')">GrabPay</button>
-    </div>
-
-    <div id="transactionArea">
-        <div class="section-title" id="activeProviderTitle" style="color: var(--gcash); text-align: center; font-size: 16px; margin-bottom: 15px;">Using GCash</div>
+    <h2 style="color: var(--gcash); margin-top:0;">GCash OTC Kiosk</h2>
+    
+    <div id="mainUi" class="active-ui">
+        <input type="tel" id="mobile" placeholder="09XXXXXXXXX" maxlength="11">
+        <input type="number" id="amount" placeholder="Amount (PHP)">
         
-        <input type="tel" id="mobileNumber" placeholder="09XXXXXXXXX" maxlength="11">
-
-        <div class="action-group">
-            <input type="number" id="depositAmount" placeholder="Amount to Cash-In (Deposit)">
-            <button class="action-btn btn-deposit" onclick="handleDeposit()">Generate Cash-In Ticket</button>
-        </div>
-
-        <div class="action-group">
-            <input type="number" id="withdrawAmount" placeholder="Amount to Cash-Out (Withdraw)">
-            <button class="action-btn btn-withdraw" onclick="handleWithdraw()">Generate Payment QR</button>
-        </div>
+        <button class="btn-in" onclick="requestTransaction('deposit')">CASH-IN (Deposit)</button>
+        <button class="btn-out" onclick="requestTransaction('withdraw')">CASH-OUT (Withdraw)</button>
+        <div id="errorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
     </div>
 
-    <div id="status"></div>
+    <div id="waitUi">
+        <h3>Show this to Cashier</h3>
+        <p style="color:#6B7280; font-size:14px;">Please hand cash/send GCash to the cashier to complete.</p>
+        <div class="ticket-box">
+            <div style="font-size:12px; color:#6B7280; text-transform:uppercase;" id="waitType"></div>
+            <div style="font-size:40px; font-weight:bold; color:var(--primary); letter-spacing: 5px;" id="displayCode"></div>
+            <div style="font-size:18px; font-weight:bold; margin-top:10px;">₱<span id="displayAmt"></span></div>
+        </div>
+        <div style="margin-top:20px; font-size:14px; color:#059669;" id="pollingStatus">⏳ Waiting for cashier approval...</div>
+    </div>
+
+    <div id="receiptUi">
+        <div style="color:#059669; font-size:40px; margin-bottom:10px;">✅</div>
+        <h3 style="margin-top:0;">Transaction Complete</h3>
+        <div class="receipt-box" id="finalReceipt"></div>
+        <button class="btn-in" style="margin-top:20px;" onclick="location.reload()">Done / Next Customer</button>
+    </div>
 </div>
 
 <script>
-    let selectedProvider = null;
+    let currentPoller = null;
 
-    function selectProvider(provider) {
-        if (provider === 'gcash') {
-            selectedProvider = 'GCash';
-            document.getElementById('transactionArea').style.display = 'block';
-            showStatus("Enter mobile number and amount.", "#007EE5");
-        }
-    }
-
-    function showComingSoon(providerName) {
-        document.getElementById('transactionArea').style.display = 'none';
-        showStatus(`${providerName} integration is coming soon!`, "#6B7280");
-    }
-
-    function showStatus(msg, color = "#059669") {
-        const el = document.getElementById('status');
-        el.style.color = color;
-        el.innerHTML = msg; 
-    }
-
-    // CASH-IN FLOW: Still uses the manual OTP for the cashier
-    async function handleDeposit() {
-        const mobile = document.getElementById('mobileNumber').value;
-        const amount = document.getElementById('depositAmount').value;
+    async function requestTransaction(type) {
+        const mobile = document.getElementById('mobile').value.trim();
+        const amount = document.getElementById('amount').value;
+        const errorEl = document.getElementById('errorMsg');
         
-        if (!mobile || mobile.length !== 11) return showStatus("Enter a valid 11-digit mobile number", "#DC2626");
-        if (!amount || amount <= 0) return showStatus("Enter a valid amount", "#DC2626");
+        errorEl.innerText = "";
 
-        const res = await fetch('/deposit/request', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: amount, mobile: mobile, provider: selectedProvider })
-        });
-        
-        const data = await res.json();
-        
-        if(res.ok) {
-            document.getElementById('depositAmount').value = '';
-            showStatus(`
-                <div class="qr-container">
-                    <div style="font-weight:bold; margin-bottom:5px;">Hand cash to cashier.</div>
-                    <div style="font-size:12px; margin-bottom:10px;">Target: <strong>${mobile}</strong></div>
-                    <div style="font-size:12px; color:#6B7280;">Provide this code to confirm:</div>
-                    <span style="font-size:32px; font-weight:bold; letter-spacing:4px; color:var(--primary);">${data.otp}</span>
-                </div>
-            `, "#1F2937");
-        }
-    }
-
-    // CASH-OUT FLOW: Uses the real Xendit Enterprise QR code
-    async function handleWithdraw() {
-        const mobile = document.getElementById('mobileNumber').value;
-        const amount = document.getElementById('withdrawAmount').value;
-        
-        if (!mobile || mobile.length !== 11) return showStatus("Enter a valid 11-digit mobile number", "#DC2626");
-        if (!amount || amount <= 0) return showStatus("Enter a valid amount", "#DC2626");
-
-        showStatus("Connecting to GCash gateway...", "#4B5563");
+        if(mobile.length !== 11) return errorEl.innerText = "Enter a valid 11-digit mobile number";
+        if(!amount || amount <= 0) return errorEl.innerText = "Enter a valid amount";
 
         try {
-            const res = await fetch('/withdraw/request', {
+            const res = await fetch('/transaction/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: amount, mobile: mobile, provider: selectedProvider })
+                body: JSON.stringify({ type, amount, mobile, provider: 'GCash' })
             });
-
+            
             const data = await res.json();
             
-            if (res.ok) {
-                document.getElementById('withdrawAmount').value = '';
+            if(res.ok) {
+                document.getElementById('mainUi').classList.remove('active-ui');
+                document.getElementById('waitUi').classList.add('active-ui');
                 
-                // Turn Xendit's secure checkout link into a visible QR Code
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.checkout_url)}`;
-                
-                showStatus(`
-                    <div class="qr-container">
-                        <div style="color:#1F2937; font-weight:bold; margin-bottom:10px;">Scan to Pay with GCash</div>
-                        <img src="${qrUrl}" alt="GCash QR Code" style="border-radius: 8px; border: 3px solid #007EE5; width: 200px; height: 200px; padding: 5px; background: white;">
-                        <div style="font-size:12px; margin-top:10px; color:#6B7280;">Waiting for payment verification...</div>
-                        <div style="font-size:10px; margin-top:5px; color:#9CA3AF;">REF: ${data.reference_id}</div>
-                    </div>
-                `, "#1F2937");
+                document.getElementById('waitType').innerText = type === 'deposit' ? 'CASH-IN (Deposit)' : 'CASH-OUT (Withdraw)';
+                document.getElementById('displayCode').innerText = data.code;
+                document.getElementById('displayAmt').innerText = amount;
 
-                // Note: The screen stays here. When the user scans and pays, 
-                // Xendit will silently ping your backend webhook, and the Cashier 
-                // will see the success receipt on their dashboard!
+                currentPoller = setInterval(() => checkStatus(data.reference_id), 2000);
             } else {
-                showStatus(data.error || "Transaction failed", "#DC2626");
+                errorEl.innerText = data.error || "Failed to generate ticket.";
             }
         } catch (error) {
-            showStatus("Server error. Please try again.", "#DC2626");
+            errorEl.innerText = "Cannot connect to server.";
         }
+    }
+
+    async function checkStatus(refId) {
+        try {
+            const res = await fetch(`/api/status/${refId}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'completed') {
+                    clearInterval(currentPoller); 
+                    showFinalReceipt(data);       
+                }
+            }
+        } catch (error) {
+            console.error("Polling error:", error);
+        }
+    }
+
+    function showFinalReceipt(tx) {
+        document.getElementById('waitUi').classList.remove('active-ui');
+        document.getElementById('receiptUi').classList.add('active-ui');
+
+        const color = tx.type === 'deposit' ? '#059669' : '#DC2626';
+        
+        document.getElementById('finalReceipt').innerHTML = `
+            <div style="text-align:center; font-weight:bold; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">OFFICIAL RECEIPT</div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="color:#6B7280;">Type:</span> <strong style="color:${color}; text-transform:uppercase;">${tx.type}</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="color:#6B7280;">Mobile:</span> <strong>${tx.mobile}</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <span style="color:#6B7280;">Amount:</span> <strong>₱${tx.amount.toFixed(2)}</strong>
+            </div>
+            <div style="font-size:10px; color:#9CA3AF; text-align:center;">
+                Date: ${tx.date}<br>Ref: ${tx.reference_id}
+            </div>
+        `;
     }
 </script>
 </body>
