@@ -125,7 +125,7 @@
                 document.getElementById('confirmUi').classList.remove('active-ui');
                 document.getElementById('waitUi').classList.add('active-ui');
                 
-                document.getElementById('waitType').innerText = pendingTx.type === 'deposit' ? 'CASH-IN' : 'CASH-OUT';
+                document.getElementById('waitType').innerText = pendingTx.type === 'deposit' ? 'CASH-IN OTP NUMBER BELOW' : 'CASH-OUT';
                 document.getElementById('displayCode').innerText = data.code;
                 document.getElementById('displayAmt').innerText = pendingTx.amount;
 
