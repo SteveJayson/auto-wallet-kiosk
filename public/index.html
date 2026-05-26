@@ -31,6 +31,10 @@
         .close-modal:hover { color: #4B5563; }
         .modal-content ol { padding-left: 20px; margin: 0; color: #4B5563; font-size: 15px; line-height: 1.6; }
         .modal-content li { margin-bottom: 10px; }
+        
+        /* --- Brand Header Styles --- */
+        .brand-header { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 25px; margin-top: 5px; }
+        .brand-logo { height: 32px; width: auto; object-fit: contain; }
     </style>
 </head>
 <body>
@@ -38,7 +42,10 @@
 <div class="wallet-card">
     <button class="help-btn" onclick="toggleModal('customerHelp', true)">?</button>
 
-    <h2 style="color: var(--gcash); margin-top:0;">GCash OTC Kiosk</h2>
+    <div class="brand-header">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/52/GCash_logo.svg" alt="GCash Logo" class="brand-logo">
+        <h2 style="color: var(--text); margin:0;">OTC Kiosk</h2>
+    </div>
     
     <div id="mainUi" class="active-ui">
         <input type="tel" id="mobile" placeholder="09XXXXXXXXX" maxlength="11">
@@ -64,7 +71,7 @@
             </div>
         </div>
 
-        <button class="btn-in" onclick="proceedTransaction()">Yes, Generate OTP</button>
+        <button class="btn-in" onclick="proceedTransaction()">Yes, Generate Ticket</button>
         <button class="btn-cancel" onclick="cancelTransaction()">No, Edit Details</button>
         <div id="confirmErrorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
     </div>
@@ -106,15 +113,14 @@
     let currentPoller = null;
     let pendingTx = null; 
 
-    // --- Modal Logic ---
     function toggleModal(modalId, show) {
         document.getElementById(modalId).style.display = show ? 'flex' : 'none';
     }
+    
     function closeOnBackground(event, modalId) {
         if(event.target.id === modalId) toggleModal(modalId, false);
     }
 
-    // --- Transaction Logic ---
     function reviewTransaction(type) {
         const mobile = document.getElementById('mobile').value.trim();
         const amount = document.getElementById('amount').value;
