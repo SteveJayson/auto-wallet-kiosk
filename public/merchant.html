@@ -23,7 +23,7 @@
         .receipt-box { background: #111827; padding: 20px; border-radius: 8px; border: 1px solid #374151; margin-top: 10px; text-align: left; }
         #receiptScreen { display: none; }
 
-        /* --- Help Modal Styles (Dark Mode) --- */
+        /* Help Modal Styles (Dark Mode) */
         .help-btn { position: absolute; top: 20px; right: 20px; width: 35px; height: 35px; border-radius: 50%; background: #374151; color: #9CA3AF; padding: 0; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .help-btn:hover { background: #4B5563; color: white; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(2px); }
@@ -33,6 +33,10 @@
         .modal-content ol { padding-left: 20px; margin: 0; color: #D1D5DB; font-size: 15px; line-height: 1.6; }
         .modal-content li { margin-bottom: 10px; }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* New Micro Copy Button */
+        .micro-copy-btn { background: #374151; color: #9CA3AF; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; width: auto; margin: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: normal; }
+        .micro-copy-btn:hover { background: #4B5563; color: white; }
     </style>
 </head>
 <body>
@@ -82,15 +86,30 @@
 <script>
     let currentRefId = ""; 
 
-    // --- Modal Logic ---
+    // --- New Copy Feature for Merchant ---
+    function copyText(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = btn.innerText;
+            btn.innerText = "✅";
+            btn.style.background = "#10B981"; 
+            btn.style.color = "white";
+            
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.background = "#374151";
+                btn.style.color = "#9CA3AF";
+            }, 2000);
+        });
+    }
+
     function toggleModal(modalId, show) {
         document.getElementById(modalId).style.display = show ? 'flex' : 'none';
     }
+    
     function closeOnBackground(event, modalId) {
         if(event.target.id === modalId) toggleModal(modalId, false);
     }
 
-    // --- File Upload Logic ---
     function updateFileName() {
         const fileInput = document.getElementById('receiptImage');
         const label = document.getElementById('fileLabel');
@@ -110,7 +129,6 @@
         });
     }
 
-    // --- Transaction Logic ---
     async function approveTransaction() {
         const code = document.getElementById('ticketCode').value.trim();
         const statusEl = document.getElementById('status');
@@ -133,12 +151,17 @@
                 const tx = data.receipt;
                 const color = tx.type === 'deposit' ? '#10B981' : '#EF4444';
                 
+                // Embedded the micro copy button right next to the mobile number
                 document.getElementById('merchantReceipt').innerHTML = `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                         <span style="color:#9CA3AF;">Type:</span> <strong style="color:${color}; text-transform:uppercase;">${tx.type}</strong>
                     </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span style="color:#9CA3AF;">Mobile:</span> <strong>${tx.mobile}</strong>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+                        <span style="color:#9CA3AF;">Mobile:</span> 
+                        <div style="display:flex; align-items:center; gap: 8px;">
+                            <strong>${tx.mobile}</strong>
+                            <button class="micro-copy-btn" onclick="copyText('${tx.mobile}', this)">📋</button>
+                        </div>
                     </div>
                     <div style="display:flex; justify-content:space-between;">
                         <span style="color:#9CA3AF;">Amount:</span> <strong>₱${tx.amount.toFixed(2)}</strong>
