@@ -31,7 +31,7 @@
     <h2 style="margin-top:0;">Cashier Terminal</h2>
     <p style="color:#9CA3AF; margin-bottom:25px; font-size: 14px;">Verify GCash transfer, then enter the Ticket Code.</p>
     
-    <input type="text" id="ticketCode" placeholder="000000" maxlength="6">
+    <input type="text" id="ticketCode" placeholder="000" maxlength="3">
     <button class="btn-green" onclick="approveTransaction()">VERIFY OTP</button>
     <div id="status" style="margin-top:20px; font-weight:bold; min-height: 20px;"></div>
 </div>
@@ -81,7 +81,7 @@
         const statusEl = document.getElementById('status');
         statusEl.style.color = "#EF4444"; 
 
-        if(!code || code.length !== 6) return statusEl.innerText = "Please enter a valid 6-digit code";
+        if(!code || code.length !== 3) return statusEl.innerText = "Please enter a valid 3-digit code";
         statusEl.innerText = "Verifying...";
         statusEl.style.color = "white";
 

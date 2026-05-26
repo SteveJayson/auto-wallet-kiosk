@@ -14,7 +14,8 @@ let transactions = [];
 const MERCHANT_PIN = "1234"; 
 
 function generateOTP() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    // Generates a random 3-digit number from 100 to 999
+    return Math.floor(100 + Math.random() * 900).toString();
 }
 
 // 1. Customer Requests Ticket
