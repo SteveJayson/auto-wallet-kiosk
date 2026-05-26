@@ -13,7 +13,6 @@
         button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; margin-bottom: 10px; transition: 0.1s; }
         button:active { transform: scale(0.98); }
         .btn-in { background: var(--gcash); }
-        .btn-out { background: #1F2937; }
         .btn-cancel { background: #E5E7EB; color: #4B5563; }
         
         .ticket-box { background: #F9FAFB; padding: 20px; border-radius: 12px; border: 2px dashed #D1D5DB; margin-top: 20px; }
@@ -27,14 +26,13 @@
 <body>
 
 <div class="wallet-card">
-    <h2 style="color: var(--gcash); margin-top:0;">GCash Kiosk Automatic</h2>
+    <h2 style="color: var(--gcash); margin-top:0;">GCash OTC Kiosk</h2>
     
     <div id="mainUi" class="active-ui">
         <input type="tel" id="mobile" placeholder="09XXXXXXXXX" maxlength="11">
         <input type="number" id="amount" placeholder="Amount (PHP)">
         
         <button class="btn-in" onclick="reviewTransaction('deposit')">CASH-IN (Deposit)</button>
-        <button class="btn-out" onclick="reviewTransaction('withdraw')">CASH-OUT (Withdraw)</button>
         <div id="errorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
     </div>
 
@@ -80,9 +78,8 @@
 
 <script>
     let currentPoller = null;
-    let pendingTx = null; // Stores the data temporarily while the user reviews it
+    let pendingTx = null; 
 
-    // 1. Intercept the click and show the confirmation screen
     function reviewTransaction(type) {
         const mobile = document.getElementById('mobile').value.trim();
         const amount = document.getElementById('amount').value;
@@ -93,28 +90,23 @@
         if(mobile.length !== 11) return errorEl.innerText = "Enter a valid 11-digit mobile number";
         if(!amount || amount <= 0) return errorEl.innerText = "Enter a valid amount";
 
-        // Save data to our temporary object
         pendingTx = { type, amount, mobile, provider: 'GCash' };
 
-        // Populate the confirmation UI
         document.getElementById('confirmType').innerText = type === 'deposit' ? 'Cash-In' : 'Cash-Out';
         document.getElementById('confirmType').style.color = type === 'deposit' ? '#059669' : '#DC2626';
         document.getElementById('confirmMobile').innerText = mobile;
         document.getElementById('confirmAmt').innerText = parseFloat(amount).toFixed(2);
 
-        // Swap Screens
         document.getElementById('mainUi').classList.remove('active-ui');
         document.getElementById('confirmUi').classList.add('active-ui');
     }
 
-    // 2. User clicked "No", send them back to fix it
     function cancelTransaction() {
-        pendingTx = null; // Clear the temporary data
+        pendingTx = null; 
         document.getElementById('confirmUi').classList.remove('active-ui');
         document.getElementById('mainUi').classList.add('active-ui');
     }
 
-    // 3. User clicked "Yes", actually send it to the server
     async function proceedTransaction() {
         const errorEl = document.getElementById('confirmErrorMsg');
         errorEl.innerText = "Generating ticket...";
@@ -133,7 +125,7 @@
                 document.getElementById('confirmUi').classList.remove('active-ui');
                 document.getElementById('waitUi').classList.add('active-ui');
                 
-                document.getElementById('waitType').innerText = pendingTx.type === 'deposit' ? 'CASH-IN OTP NUMBER BELOW' : 'CASH-OUT';
+                document.getElementById('waitType').innerText = pendingTx.type === 'deposit' ? 'CASH-IN' : 'CASH-OUT';
                 document.getElementById('displayCode').innerText = data.code;
                 document.getElementById('displayAmt').innerText = pendingTx.amount;
 
