@@ -7,7 +7,7 @@
     <style>
         :root { --primary: #4F46E5; --bg: #F3F4F6; --card: #FFFFFF; --text: #1F2937; --gcash: #007EE5; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        .wallet-card { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 30px; text-align: center; }
+        .wallet-card { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 30px; text-align: center; position: relative; }
         input { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; text-align: center; }
         input[type=tel] { font-weight: bold; font-size: 18px; letter-spacing: 2px; border: 2px solid var(--gcash); }
         button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; margin-bottom: 10px; transition: 0.1s; }
@@ -21,11 +21,23 @@
         
         #mainUi, #confirmUi, #waitUi, #receiptUi { display: none; }
         .active-ui { display: block !important; }
+
+        /* --- Help Modal Styles --- */
+        .help-btn { position: absolute; top: 20px; right: 20px; width: 35px; height: 35px; border-radius: 50%; background: #E5E7EB; color: #4B5563; padding: 0; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .help-btn:hover { background: #D1D5DB; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(2px); }
+        .modal-content { background: white; padding: 25px; border-radius: 16px; width: 85%; max-width: 320px; text-align: left; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); animation: slideDown 0.2s ease-out; }
+        .close-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; color: #9CA3AF; width: auto; padding: 0; line-height: 1; margin: 0; box-shadow: none; }
+        .close-modal:hover { color: #4B5563; }
+        .modal-content ol { padding-left: 20px; margin: 0; color: #4B5563; font-size: 15px; line-height: 1.6; }
+        .modal-content li { margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="wallet-card">
+    <button class="help-btn" onclick="toggleModal('customerHelp', true)">?</button>
+
     <h2 style="color: var(--gcash); margin-top:0;">GCash OTC Kiosk</h2>
     
     <div id="mainUi" class="active-ui">
@@ -52,7 +64,7 @@
             </div>
         </div>
 
-        <button class="btn-in" onclick="proceedTransaction()">Yes, Generate Ticket</button>
+        <button class="btn-in" onclick="proceedTransaction()">Yes, Generate OTP</button>
         <button class="btn-cancel" onclick="cancelTransaction()">No, Edit Details</button>
         <div id="confirmErrorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
     </div>
@@ -62,7 +74,7 @@
         <p style="color:#6B7280; font-size:14px;">Please hand cash/send GCash to the cashier to complete.</p>
         <div class="ticket-box">
             <div style="font-size:12px; color:#6B7280; text-transform:uppercase;" id="waitType"></div>
-            <div style="font-size:40px; font-weight:bold; color:var(--primary); letter-spacing: 5px;" id="displayCode"></div>
+            <div style="font-size:50px; font-weight:bold; color:var(--primary); letter-spacing: 5px;" id="displayCode"></div>
             <div style="font-size:18px; font-weight:bold; margin-top:10px;">₱<span id="displayAmt"></span></div>
         </div>
         <div style="margin-top:20px; font-size:14px; color:#059669;" id="pollingStatus">⏳ Waiting for cashier approval...</div>
@@ -76,10 +88,33 @@
     </div>
 </div>
 
+<div id="customerHelp" class="modal" onclick="closeOnBackground(event, 'customerHelp')">
+    <div class="modal-content">
+        <button class="close-modal" onclick="toggleModal('customerHelp', false)">×</button>
+        <h3 style="margin-top:0; color:var(--primary); margin-bottom: 20px;">How to Cash-In</h3>
+        <ol>
+            <li>Enter your exact <b>11-digit GCash number</b> and the <b>Amount</b>.</li>
+            <li>Review your details to make sure they are correct.</li>
+            <li>Hand your physical cash to the cashier.</li>
+            <li>Show the cashier the big <b>3-digit Ticket Code</b> on your screen.</li>
+            <li>Wait a moment for your official digital receipt to appear!</li>
+        </ol>
+    </div>
+</div>
+
 <script>
     let currentPoller = null;
     let pendingTx = null; 
 
+    // --- Modal Logic ---
+    function toggleModal(modalId, show) {
+        document.getElementById(modalId).style.display = show ? 'flex' : 'none';
+    }
+    function closeOnBackground(event, modalId) {
+        if(event.target.id === modalId) toggleModal(modalId, false);
+    }
+
+    // --- Transaction Logic ---
     function reviewTransaction(type) {
         const mobile = document.getElementById('mobile').value.trim();
         const amount = document.getElementById('amount').value;
@@ -125,7 +160,7 @@
                 document.getElementById('confirmUi').classList.remove('active-ui');
                 document.getElementById('waitUi').classList.add('active-ui');
                 
-                document.getElementById('waitType').innerText = pendingTx.type === 'deposit' ? 'CASH-IN OTP NUMBER BELOW' : 'CASH-OUT';
+                document.getElementById('waitType').innerText = pendingTx.type === 'deposit' ? 'CASH-IN' : 'CASH-OUT';
                 document.getElementById('displayCode').innerText = data.code;
                 document.getElementById('displayAmt').innerText = pendingTx.amount;
 

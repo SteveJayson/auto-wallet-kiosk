@@ -6,11 +6,10 @@
     <title>Cashier Dashboard</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111827; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;}
-        .dashboard { background: #1F2937; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .dashboard { background: #1F2937; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative; }
         input[type="text"] { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 8px; border: none; font-size: 24px; font-weight: bold; text-align: center; box-sizing: border-box; letter-spacing: 2px;}
         input[type="text"].greeting-input { font-size: 16px; font-weight: normal; letter-spacing: normal; text-align: left; background: #374151; color: white; margin-top: 15px;}
         
-        /* New File Upload Styles */
         .file-upload-wrapper { margin-top: 10px; margin-bottom: 15px; text-align: left; }
         .file-upload-label { display: block; background: #374151; padding: 12px; border-radius: 8px; font-size: 14px; text-align: center; cursor: pointer; color: #9CA3AF; border: 1px dashed #6B7280; }
         .file-upload-label:hover { background: #4B5563; color: white; }
@@ -23,11 +22,24 @@
         
         .receipt-box { background: #111827; padding: 20px; border-radius: 8px; border: 1px solid #374151; margin-top: 10px; text-align: left; }
         #receiptScreen { display: none; }
+
+        /* --- Help Modal Styles (Dark Mode) --- */
+        .help-btn { position: absolute; top: 20px; right: 20px; width: 35px; height: 35px; border-radius: 50%; background: #374151; color: #9CA3AF; padding: 0; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .help-btn:hover { background: #4B5563; color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(2px); }
+        .modal-content { background: #1F2937; padding: 25px; border-radius: 16px; width: 85%; max-width: 320px; text-align: left; position: relative; border: 1px solid #374151; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); animation: slideDown 0.2s ease-out; }
+        .close-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; color: #9CA3AF; width: auto; padding: 0; line-height: 1; margin: 0; box-shadow: none; }
+        .close-modal:hover { color: white; }
+        .modal-content ol { padding-left: 20px; margin: 0; color: #D1D5DB; font-size: 15px; line-height: 1.6; }
+        .modal-content li { margin-bottom: 10px; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
 <div class="dashboard" id="inputScreen">
+    <button class="help-btn" onclick="toggleModal('merchantHelp', true)">?</button>
+
     <h2 style="margin-top:0;">Cashier Terminal</h2>
     <p style="color:#9CA3AF; margin-bottom:25px; font-size: 14px;">Enter customer's OTP number inorder to proceed.</p>
     
@@ -53,9 +65,32 @@
     <div id="sendStatus" style="margin-top:15px; font-weight:bold; min-height: 20px; color:#10B981;"></div>
 </div>
 
+<div id="merchantHelp" class="modal" onclick="closeOnBackground(event, 'merchantHelp')">
+    <div class="modal-content">
+        <button class="close-modal" onclick="toggleModal('merchantHelp', false)">×</button>
+        <h3 style="margin-top:0; color:#10B981; margin-bottom: 20px;">Cashier Guide</h3>
+        <ol>
+            <li>Receive the physical cash from the customer.</li>
+            <li>Ask for the <b>3-digit Ticket Code</b> on their screen and type it here.</li>
+            <li>Click <b>VERIFY OTP</b> to pull up their transaction.</li>
+            <li><i>(Optional)</i> Upload the GCash proof of transfer and type a quick greeting.</li>
+            <li>Click <b>SEND TO CUSTOMER SCREEN</b> to finalize!</li>
+        </ol>
+    </div>
+</div>
+
 <script>
     let currentRefId = ""; 
 
+    // --- Modal Logic ---
+    function toggleModal(modalId, show) {
+        document.getElementById(modalId).style.display = show ? 'flex' : 'none';
+    }
+    function closeOnBackground(event, modalId) {
+        if(event.target.id === modalId) toggleModal(modalId, false);
+    }
+
+    // --- File Upload Logic ---
     function updateFileName() {
         const fileInput = document.getElementById('receiptImage');
         const label = document.getElementById('fileLabel');
@@ -66,7 +101,6 @@
         }
     }
 
-    // Magic trick: Converts an image file into a Base64 text string
     function fileToBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -76,6 +110,7 @@
         });
     }
 
+    // --- Transaction Logic ---
     async function approveTransaction() {
         const code = document.getElementById('ticketCode').value.trim();
         const statusEl = document.getElementById('status');
@@ -143,18 +178,17 @@
                     pin: "1234", 
                     reference_id: currentRefId, 
                     greeting: greeting,
-                    receipt_image: base64String // Attach the encoded image!
+                    receipt_image: base64String 
                 }) 
             });
 
             if (res.ok) {
                 statusEl.innerText = "✅ Sent to Customer!";
                 setTimeout(() => {
-                    // Reset everything
                     document.getElementById('receiptScreen').style.display = 'none';
                     document.getElementById('inputScreen').style.display = 'block';
                     document.getElementById('greetingMsg').value = "";
-                    fileInput.value = ""; // Clear file
+                    fileInput.value = ""; 
                     document.getElementById('fileLabel').innerHTML = "📸 Attach GCash Screenshot (Optional)";
                     document.getElementById('fileLabel').style.borderColor = "#6B7280";
                     document.getElementById('fileLabel').style.color = "#9CA3AF";
