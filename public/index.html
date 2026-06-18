@@ -13,6 +13,7 @@
         button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; margin-bottom: 10px; transition: 0.1s; }
         button:active { transform: scale(0.98); }
         .btn-in { background: var(--gcash); }
+        .btn-out { background: #1F2937; }
         .btn-cancel { background: #E5E7EB; color: #4B5563; }
         
         .ticket-box { background: #F9FAFB; padding: 20px; border-radius: 12px; border: 2px dashed #D1D5DB; margin-top: 20px; }
@@ -36,7 +37,7 @@
         .brand-header { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 25px; margin-top: 5px; }
         .brand-logo { height: 32px; width: auto; object-fit: contain; }
         
-        /* New Small Copy Button */
+        /* Copy Button */
         .copy-btn { background: #E5E7EB; color: #4B5563; padding: 6px 12px; font-size: 12px; border-radius: 20px; margin: 5px auto 0; width: auto; display: block; box-shadow: none; font-weight: normal; }
         .copy-btn:hover { background: #D1D5DB; }
     </style>
@@ -48,7 +49,7 @@
 
     <div class="brand-header">
         <img src="https://upload.wikimedia.org/wikipedia/commons/5/52/GCash_logo.svg" alt="GCash Logo" class="brand-logo">
-        <h2 style="color: var(--text); margin:0;">Kiosk Automatic</h2>
+        <h2 style="color: var(--text); margin:0;">OTC Kiosk</h2>
     </div>
     
     <div id="mainUi" class="active-ui">
@@ -56,6 +57,8 @@
         <input type="number" id="amount" placeholder="Amount (PHP)">
         
         <button class="btn-in" onclick="reviewTransaction('deposit')">CASH-IN (Deposit)</button>
+        <button class="btn-out" onclick="reviewTransaction('withdraw')">CASH-OUT (Withdraw)</button>
+        
         <div id="errorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
     </div>
 
@@ -86,8 +89,9 @@
         <div class="ticket-box">
             <div style="font-size:12px; color:#6B7280; text-transform:uppercase;" id="waitType"></div>
             
-            <div style="font-size:50px; font-weight:bold; color:var(--primary); letter-spacing: 5px;" id="displayCode"></div>
-            <button class="copy-btn" onclick="copyToClipboard('displayCode', this)">📋 Copy Code</button>
+            <div style="font-size:50px; font-weight:bold; color:var(--primary); letter-spacing: 5px; margin-top:10px;" id="displayCode"></div>
+            
+            <button class="copy-btn" id="copyBtn" onclick="copyToClipboard('displayCode', this)">📋 Copy Code</button>
             
             <div style="font-size:18px; font-weight:bold; margin-top:15px;">₱<span id="displayAmt"></span></div>
         </div>
@@ -105,13 +109,13 @@
 <div id="customerHelp" class="modal" onclick="closeOnBackground(event, 'customerHelp')">
     <div class="modal-content">
         <button class="close-modal" onclick="toggleModal('customerHelp', false)">×</button>
-        <h3 style="margin-top:0; color:var(--primary); margin-bottom: 20px;">How to Cash-In</h3>
+        <h3 style="margin-top:0; color:var(--primary); margin-bottom: 20px;">How to Use Kiosk</h3>
         <ol>
+            <li>Select <b>Cash-In</b> (to deposit) or <b>Cash-Out</b> (to withdraw).</li>
             <li>Enter your exact <b>11-digit GCash number</b> and the <b>Amount</b>.</li>
             <li>Review your details to make sure they are correct.</li>
-            <li>Hand your physical cash to the cashier.</li>
-            <li>Show the cashier the big <b>3-digit Ticket Code</b> on your screen.</li>
-            <li>Wait a moment for your official digital receipt to appear!</li>
+            <li>For Cash-In, show the cashier your 3-digit code. For Cash-Out, scan the PayMongo QR Code to pay!</li>
+            <li>Wait a moment for your official digital receipt to appear.</li>
         </ol>
     </div>
 </div>
@@ -120,13 +124,12 @@
     let currentPoller = null;
     let pendingTx = null; 
 
-    // --- New Copy Feature ---
     function copyToClipboard(elementId, btn) {
         const text = document.getElementById(elementId).innerText;
         navigator.clipboard.writeText(text).then(() => {
             const originalText = btn.innerText;
             btn.innerText = "✅ Copied!";
-            btn.style.background = "#D1FAE5"; // Light green
+            btn.style.background = "#D1FAE5"; 
             btn.style.color = "#065F46";
             
             setTimeout(() => {
@@ -190,10 +193,25 @@
                 document.getElementById('confirmUi').classList.remove('active-ui');
                 document.getElementById('waitUi').classList.add('active-ui');
                 
-                document.getElementById('waitType').innerText = pendingTx.type === 'deposit' ? 'CASH-IN' : 'CASH-OUT';
-                document.getElementById('displayCode').innerText = data.code;
-                document.getElementById('displayAmt').innerText = pendingTx.amount;
+                // --- NEW PAYMONGO QR LOGIC ---
+                if (data.checkout_url) {
+                    // Turn the PayMongo Link into a scannable QR Code
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.checkout_url)}`;
+                    document.getElementById('waitType').innerText = "SCAN TO PAY (CASH-OUT)";
+                    document.getElementById('displayCode').innerHTML = `<img src="${qrUrl}" style="border-radius: 8px; border: 3px solid #007EE5; width: 160px; height: 160px; padding: 5px; background: white; margin: 0 auto; display: block;">`;
+                    
+                    // Hide the copy button because it's an image now
+                    document.getElementById('copyBtn').style.display = 'none';
+                    document.getElementById('pollingStatus').innerText = "⏳ Waiting for PayMongo payment...";
+                } else {
+                    // Standard Manual Cash-In Setup
+                    document.getElementById('waitType').innerText = 'CASH-IN TICKET';
+                    document.getElementById('displayCode').innerText = data.code;
+                    document.getElementById('copyBtn').style.display = 'block';
+                    document.getElementById('pollingStatus').innerText = "⏳ Waiting for cashier approval...";
+                }
 
+                document.getElementById('displayAmt').innerText = pendingTx.amount;
                 currentPoller = setInterval(() => checkStatus(data.reference_id), 2000);
             } else {
                 errorEl.style.color = "red";
