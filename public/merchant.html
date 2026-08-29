@@ -17,6 +17,12 @@
         .btn-alert { background: #374151; color: white; border: 1px solid #4B5563; font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer; margin-left: auto; display: flex; align-items: center; gap: 5px;}
         .btn-alert.active { background: #10B981; border-color: #059669; }
 
+        /* Continuous Alarm Banner */
+        #alarmBanner { display: none; background: #EF4444; padding: 20px; text-align: center; margin-bottom: 20px; border-radius: 8px; animation: pulseRed 1s infinite alternate; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+        @keyframes pulseRed { from { background: #EF4444; } to { background: #DC2626; } }
+        .btn-stop-alarm { background: white; color: #EF4444; width: 100%; padding: 15px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .btn-stop-alarm:active { transform: scale(0.98); }
+
         .queue-card { background: #374151; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #10B981; display: flex; justify-content: space-between; align-items: center; }
         .queue-info h3 { margin: 0 0 5px 0; font-size: 20px; }
         .queue-info p { margin: 0; color: #9CA3AF; font-size: 14px; }
@@ -55,6 +61,13 @@
         <button class="tab-btn active" id="tabQueue" onclick="switchTab('queue')">Live Queue <span id="queueCount" style="background: #10B981; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">0</span></button>
         <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">History</button>
         <button class="btn-alert" id="alertBtn" onclick="enableAlerts()">🔔 Enable Alerts</button>
+    </div>
+
+    <!-- NEW: CONTINUOUS ALARM BANNER -->
+    <div id="alarmBanner">
+        <h3 style="margin: 0; color: white; font-size: 22px;">🚨 NEW REQUEST WAITING 🚨</h3>
+        <p style="margin: 5px 0 0 0; color: #FCA5A5;">A customer is waiting at the kiosk!</p>
+        <button class="btn-stop-alarm" onclick="stopAlarm()">🔕 STOP ALARM</button>
     </div>
 
     <!-- Live Queue View -->
@@ -108,10 +121,13 @@
     let currentRefId = ""; 
     let currentTab = 'queue';
     let previousQueueCount = 0;
+    
+    // Alert Variables
     let alertsEnabled = false;
-    let globalAudioCtx = null; // FIX: We now use ONE global audio engine so it never crashes!
+    let globalAudioCtx = null; 
+    let alarmInterval = null; // Keeps track of the continuous looping beep
 
-    // --- ALERT NOTIFICATION LOGIC ---
+    // --- CONTINUOUS ALARM LOGIC ---
     function enableAlerts() {
         if ("Notification" in window) {
             Notification.requestPermission().then(permission => {
@@ -124,7 +140,6 @@
             });
         }
         
-        // FIX: Create the audio engine only ONCE when the button is clicked
         if (!globalAudioCtx) {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             globalAudioCtx = new AudioContext();
@@ -134,34 +149,42 @@
     }
 
     function triggerNewRequestAlert(amount, type) {
-        if (!alertsEnabled) return;
+        if (!alertsEnabled || alarmInterval !== null) return; // Don't trigger if already ringing
 
-        // 1. Play the sound first
-        playAlertSound();
-
-        // 2. Show the smooth slide-in notification
+        // 1. Show Desktop Popup
         if ("Notification" in window && Notification.permission === "granted") {
             try {
-                new Notification("New Kiosk Request! 🔔", {
+                new Notification("New Kiosk Request! 🚨", {
                     body: `A customer requested a ${type} for ₱${amount.toFixed(2)}.`,
                     icon: "https://upload.wikimedia.org/wikipedia/commons/5/52/GCash_logo.svg"
                 });
             } catch(e) { console.log(e); }
         }
 
-        // 3. NEW: The Brute-Force Browser Alert
-        // We put a tiny 300-millisecond delay here so the browser has time 
-        // to start playing the "Ding!" sound before the alert() freezes the screen.
-        setTimeout(() => {
-            alert(`🔔 NEW KIOSK REQUEST!\n\nType: ${type.toUpperCase()}\nAmount: ₱${amount.toFixed(2)}\n\nPlease check the live queue.`);
-        }, 300);
+        // 2. Drop down the big red STOP ALARM banner
+        document.getElementById('alarmBanner').style.display = 'block';
+
+        // 3. Start the continuous, annoying looping alarm! (Every 1.5 seconds)
+        playAlertSound(); 
+        alarmInterval = setInterval(() => {
+            playAlertSound();
+        }, 1500);
+    }
+
+    function stopAlarm() {
+        // Stop the loop
+        if (alarmInterval !== null) {
+            clearInterval(alarmInterval);
+            alarmInterval = null;
+        }
+        // Hide the banner
+        document.getElementById('alarmBanner').style.display = 'none';
     }
 
     function playAlertSound(isSilentAuth = false) {
         if (!globalAudioCtx) return;
 
         try {
-            // Wake up the audio engine if the browser put it to sleep
             if (globalAudioCtx.state === 'suspended') {
                 globalAudioCtx.resume();
             }
@@ -169,15 +192,15 @@
             const osc = globalAudioCtx.createOscillator();
             const gainNode = globalAudioCtx.createGain();
             
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, globalAudioCtx.currentTime); // High pitch "Ding"
+            osc.type = 'square'; // Changed to 'square' wave to sound more like a harsh alarm/beeper
+            osc.frequency.setValueAtTime(800, globalAudioCtx.currentTime); 
             
-            gainNode.gain.setValueAtTime(isSilentAuth ? 0.01 : 0.1, globalAudioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(isSilentAuth ? 0.01 : 0.15, globalAudioCtx.currentTime); 
             
             osc.connect(gainNode);
             gainNode.connect(globalAudioCtx.destination);
             osc.start();
-            osc.stop(globalAudioCtx.currentTime + 0.2);
+            osc.stop(globalAudioCtx.currentTime + 0.3); // Beep lasts slightly longer (0.3s)
         } catch (e) {
             console.log("Audio not supported");
         }
@@ -204,7 +227,6 @@
             const res = await fetch('/api/merchant/queue');
             const queue = await res.json();
             
-            // FIX: Update the UI FIRST! (So if the sound fails, the screen still updates safely)
             document.getElementById('queueCount').innerText = queue.length;
             const queueList = document.getElementById('queueList');
             
@@ -225,7 +247,7 @@
                 });
             }
 
-            // TRIGGER ALERT SECOND (After UI is successfully drawn)
+            // TRIGGER CONTINUOUS ALARM SECOND
             if (queue.length > previousQueueCount) {
                 const newestRequest = queue[queue.length - 1]; 
                 triggerNewRequestAlert(newestRequest.amount, newestRequest.type);
@@ -286,6 +308,9 @@
     }
 
     function openActionScreen(refId, mobile, amount) {
+        // Automatically stop the alarm if they click process
+        stopAlarm();
+
         currentRefId = refId;
         document.getElementById('activeMobile').innerText = mobile;
         document.getElementById('activeAmount').innerText = `₱${amount.toFixed(2)}`;
