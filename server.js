@@ -5,7 +5,14 @@ const fs = require("fs");
 const axios = require("axios");
 
 const app = express();
+app.use(express.static('public'));
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
 
+app.get('/merchant', (req, res) => {
+    res.sendFile(__dirname + '/public/merchant.html');
+});
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
