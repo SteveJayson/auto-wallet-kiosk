@@ -65,18 +65,25 @@
 </div>
 
 <div class="dashboard" id="actionScreen">
-    <h3 style="margin-top:0; color:#10B981;">Process Cash-In</h3>
+    <h3 id="actionScreenTitle" style="margin-top:0; color:#10B981;">Process Transaction</h3>
     <div style="background: #111827; padding: 15px; border-radius: 8px; border: 1px solid #374151; margin-bottom: 15px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+            <span style="color:#9CA3AF;">Type:</span> <strong id="activeType" style="text-transform:uppercase;"></strong>
+        </div>
         <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
             <span style="color:#9CA3AF;">Mobile:</span> <strong id="activeMobile" style="font-size: 18px;"></strong>
         </div>
         <div style="display:flex; justify-content:space-between;">
             <span style="color:#9CA3AF;">Amount:</span> <strong id="activeAmount" style="font-size: 18px; color: #10B981;"></strong>
         </div>
+        <div id="activeQrContainer" style="margin-top: 12px; display: none; text-align: center;">
+            <span style="color:#9CA3AF; font-size:12px; display:block; margin-bottom:5px;">Customer Provided QR:</span>
+            <img id="activeQrImage" src="" style="max-width: 120px; border-radius: 6px; border: 1px solid #4B5563;">
+        </div>
     </div>
     
     <div class="file-upload-wrapper">
-        <label for="receiptImage" class="file-upload-label" id="fileLabel">📸 Attach GCash Screenshot (Optional)</label>
+        <label for="receiptImage" class="file-upload-label" id="fileLabel">📸 Attach Proof / Screenshot (Optional)</label>
         <input type="file" id="receiptImage" accept="image/*" onchange="updateFileName()">
     </div>
     
@@ -162,13 +169,14 @@
             } else {
                 queueList.innerHTML = '';
                 queue.forEach(tx => {
+                    const typeColor = tx.type === 'deposit' ? '#10B981' : '#F59E0B';
                     queueList.innerHTML += `
-                        <div class="queue-card">
+                        <div class="queue-card" style="border-left-color: ${typeColor};">
                             <div class="queue-info">
-                                <h3>₱${tx.amount.toFixed(2)}</h3>
-                                <p>${tx.mobile} | ${tx.date.split(',')[1]}</p>
+                                <h3>₱${tx.amount.toFixed(2)} <span style="font-size:12px; color:${typeColor};">(${tx.type.toUpperCase()})</span></h3>
+                                <p>${tx.mobile} | ${tx.date.split(',')[1] || tx.date}</p>
                             </div>
-                            <button class="btn-green" onclick="openActionScreen('${tx.reference_id}', '${tx.mobile}', ${tx.amount})">PROCESS</button>
+                            <button class="btn-green" onclick='openActionScreen(${JSON.stringify(tx)})'>PROCESS</button>
                         </div>
                     `;
                 });
@@ -221,11 +229,23 @@
         fetchHistory();
     }
 
-    function openActionScreen(refId, mobile, amount) {
+    function openActionScreen(tx) {
         stopAlarm();
-        currentRefId = refId;
-        document.getElementById('activeMobile').innerText = mobile;
-        document.getElementById('activeAmount').innerText = `₱${amount.toFixed(2)}`;
+        currentRefId = tx.reference_id;
+        document.getElementById('activeType').innerText = tx.type;
+        document.getElementById('activeMobile').innerText = tx.mobile;
+        document.getElementById('activeAmount').innerText = `₱${tx.amount.toFixed(2)}`;
+        document.getElementById('actionScreenTitle').innerText = `Process ${tx.type.toUpperCase()}`;
+
+        const qrContainer = document.getElementById('activeQrContainer');
+        const qrImage = document.getElementById('activeQrImage');
+        if (tx.qr_image) {
+            qrImage.src = tx.qr_image;
+            qrContainer.style.display = 'block';
+        } else {
+            qrContainer.style.display = 'none';
+        }
+
         document.getElementById('mainDashboard').style.display = 'none';
         document.getElementById('actionScreen').style.display = 'block';
     }
@@ -272,11 +292,10 @@
         }
     }
 
-    // Real-time EventSource Stream listener
     const evt = new EventSource('/api/merchant/stream');
     evt.onmessage = (e) => { if (e.data === "trigger") fetchQueue(); };
 
-    setInterval(fetchQueue, 800); // Safety backup poll
+    setInterval(fetchQueue, 800); 
     fetchQueue();
 </script>
 </body>

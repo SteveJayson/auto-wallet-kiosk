@@ -5,21 +5,11 @@ const fs = require("fs");
 const axios = require("axios");
 
 const app = express();
-app.use(express.static('public'));
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-});
 
-app.get('/merchant', (req, res) => {
-    res.sendFile(__dirname + '/public/merchant.html');
-});
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-app.use(express.static(__dirname));
-if (fs.existsSync(path.join(__dirname, 'public'))) {
-    app.use(express.static(path.join(__dirname, 'public')));
-}
+app.use(express.static(path.join(__dirname, 'public')));
 
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY || "";
 const PAYMONGO_AUTH = Buffer.from(PAYMONGO_SECRET_KEY + ":").toString("base64");
@@ -27,19 +17,16 @@ const PAYMONGO_AUTH = Buffer.from(PAYMONGO_SECRET_KEY + ":").toString("base64");
 let transactions = [];
 const MERCHANT_PIN = "1234";
 
-// Serve HTML routes safely
-function sendHtmlFile(res, fileName) {
-    const rootPath = path.join(__dirname, fileName);
-    const publicPath = path.join(__dirname, 'public', fileName);
-    if (fs.existsSync(rootPath)) return res.sendFile(rootPath);
-    if (fs.existsSync(publicPath)) return res.sendFile(publicPath);
-    res.status(404).send(`Error: ${fileName} not found.`);
-}
+// Routes for web views
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-app.get('/', (req, res) => sendHtmlFile(res, 'index.html'));
-app.get('/merchant', (req, res) => sendHtmlFile(res, 'merchant.html'));
+app.get('/merchant', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'merchant.html'));
+});
 
-// Real-time stream for instant alerts
+// Real-time EventSource Stream for instant alerts
 let appConnections = [];
 app.get("/api/merchant/stream", (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
@@ -50,9 +37,13 @@ app.get("/api/merchant/stream", (req, res) => {
     req.on("close", () => { appConnections = appConnections.filter(c => c !== res); });
 });
 
-// Customer requests ticket
+function broadcastTrigger() {
+    appConnections.forEach(client => { try { client.write(`data: trigger\n\n`); } catch (e) {} });
+}
+
+// Customer submits a transaction request
 app.post("/transaction/request", async (req, res) => {
-    const { type, amount, mobile, provider } = req.body;
+    const { type, amount, mobile, provider, qr_image } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: "Invalid amount" });
     if (!mobile || mobile.length !== 11) return res.status(400).json({ error: "Invalid mobile number" });
 
@@ -70,14 +61,19 @@ app.post("/transaction/request", async (req, res) => {
 
         transactions.push({
             id: transactions.length + 1,
-            type, amount: parseFloat(amount), mobile, provider: provider || "GCash",
+            type, 
+            amount: parseFloat(amount), 
+            mobile, 
+            provider: provider || "GCash",
+            qr_image: qr_image || null,
             status: type === "withdraw" ? "pending_paymongo" : "pending_merchant",
-            reference_id: ref, date: new Date().toLocaleString(), greeting: "", receipt_image: null
+            reference_id: ref, 
+            date: new Date().toLocaleString(), 
+            greeting: "", 
+            receipt_image: null
         });
 
-        // Instant broadcast to merchant app
-        appConnections.forEach(client => { try { client.write(`data: trigger\n\n`); } catch (e) {} });
-
+        broadcastTrigger();
         res.json({ message: "Request Generated", reference_id: ref, checkout_url: checkoutUrl });
     } catch (error) {
         res.status(500).json({ error: "Failed to process transaction" });
@@ -91,7 +87,8 @@ app.get("/api/status/:refId", (req, res) => {
 });
 
 app.get("/api/merchant/queue", (req, res) => {
-    res.json(transactions.filter(t => t.status === "pending_merchant"));
+    // Show requests that are ready for merchant review
+    res.json(transactions.filter(t => t.status === "pending_merchant" || t.status === "pending_paymongo"));
 });
 
 app.post("/merchant/send", (req, res) => {
@@ -99,9 +96,12 @@ app.post("/merchant/send", (req, res) => {
     if (pin !== MERCHANT_PIN) return res.status(401).json({ error: "Unauthorized" });
     const tx = transactions.find(t => t.reference_id === reference_id);
     if (!tx) return res.status(404).json({ error: "Transaction not found" });
+    
     tx.status = "completed";
     tx.greeting = greeting || "Thank you for using our kiosk!";
     tx.receipt_image = receipt_image || null;
+    
+    broadcastTrigger();
     res.json({ message: "Sent successfully!" });
 });
 
@@ -109,8 +109,12 @@ app.post("/paymongo-webhook", (req, res) => {
     const event = req.body;
     if (event.data?.attributes?.type === "link.payment.paid") {
         const refId = event.data.attributes.data.attributes.remarks;
-        const tx = transactions.find(t => t.reference_id === refId && t.status === "pending_paymongo");
-        if (tx) { tx.status = "completed"; tx.greeting = "Payment automatically verified via PayMongo!"; }
+        const tx = transactions.find(t => t.reference_id === refId);
+        if (tx) { 
+            tx.status = "completed"; 
+            tx.greeting = "Payment automatically verified via PayMongo!"; 
+            broadcastTrigger();
+        }
     }
     res.sendStatus(200);
 });

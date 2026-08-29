@@ -8,7 +8,7 @@
         :root { --primary: #4F46E5; --bg: #F3F4F6; --card: #FFFFFF; --text: #1F2937; --gcash: #007EE5; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
         .wallet-card { background: var(--card); width: 100%; max-width: 400px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 30px; text-align: center; position: relative; }
-        input { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; text-align: center; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; text-align: center; }
         input[type=tel] { font-weight: bold; font-size: 18px; letter-spacing: 2px; border: 2px solid var(--gcash); }
         button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; margin-bottom: 10px; transition: 0.1s; }
         button:active { transform: scale(0.98); }
@@ -47,18 +47,26 @@
     </div>
     
     <div id="mainUi" class="active-ui">
+        <select id="typeSelector" onchange="handleTypeChange()" style="background: #F9FAFB; font-weight: bold;">
+            <option value="deposit">CASH-IN (Deposit)</option>
+            <option value="withdraw">CASH-OUT (Withdraw via QR)</option>
+        </select>
+
         <input type="tel" id="mobile" placeholder="09XXXXXXXXX" maxlength="11">
         <input type="number" id="amount" placeholder="Amount (PHP)">
         
-        <button class="btn-in" onclick="reviewTransaction('deposit')">CASH-IN (Deposit)</button>
-        <button class="btn-out" onclick="reviewTransaction('withdraw')">CASH-OUT (Withdraw)</button>
+        <!-- Optional QR Code field for Cash-Out -->
+        <div id="qrInputWrapper" style="display:none;">
+            <input type="text" id="qrImageInput" placeholder="Paste your Personal QR Image URL">
+        </div>
         
+        <button id="actionBtn" class="btn-in" onclick="reviewTransaction()">PROCEED</button>
         <div id="errorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
     </div>
 
     <div id="confirmUi">
         <h3 style="margin-top:0;">Review Details</h3>
-        <p style="color:#6B7280; font-size:14px; margin-bottom: 20px;">Please ensure the mobile number and amount are exactly correct.</p>
+        <p style="color:#6B7280; font-size:14px; margin-bottom: 20px;">Please ensure your information is correct.</p>
         
         <div class="ticket-box" style="text-align: left; margin-top: 0; margin-bottom: 20px; border-color: var(--gcash);">
             <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
@@ -84,10 +92,8 @@
         <div class="ticket-box">
             <div style="font-size:12px; color:#6B7280; text-transform:uppercase; margin-bottom: 10px;" id="waitType"></div>
             
-            <!-- PayMongo QR Code Container -->
             <div id="qrContainer" style="display:none;"></div>
             
-            <!-- Cash-In Spinner Container -->
             <div id="cashInSpinner" style="display:none; margin: 20px 0;">
                 <div style="font-size: 45px; animation: slideDown 1s infinite alternate;">⏳</div>
             </div>
@@ -110,10 +116,10 @@
         <button class="close-modal" onclick="toggleModal('customerHelp', false)">×</button>
         <h3 style="margin-top:0; color:var(--primary); margin-bottom: 20px;">How to Use Kiosk</h3>
         <ol>
-            <li>Select <b>Cash-In</b> (to deposit) or <b>Cash-Out</b> (to withdraw).</li>
-            <li>Enter your exact <b>11-digit GCash number</b> and the <b>Amount</b>.</li>
-            <li>Review your details and hit Confirm.</li>
-            <li>For Cash-In, hand the physical cash to the cashier. For Cash-Out, scan the QR code to pay!</li>
+            <li>Select <b>Cash-In</b> or <b>Cash-Out</b>.</li>
+            <li>Enter your exact <b>11-digit GCash number</b> and <b>Amount</b>.</li>
+            <li>For Cash-Out, optionally provide your personal QR image link.</li>
+            <li>Review and confirm to queue your request with the cashier!</li>
         </ol>
     </div>
 </div>
@@ -130,9 +136,26 @@
         if(event.target.id === modalId) toggleModal(modalId, false);
     }
 
-    function reviewTransaction(type) {
+    function handleTypeChange() {
+        const type = document.getElementById('typeSelector').value;
+        const qrWrapper = document.getElementById('qrInputWrapper');
+        const actionBtn = document.getElementById('actionBtn');
+        if (type === 'withdraw') {
+            qrWrapper.style.display = 'block';
+            actionBtn.className = 'btn-out';
+            actionBtn.innerText = 'PROCEED CASH-OUT';
+        } else {
+            qrWrapper.style.display = 'none';
+            actionBtn.className = 'btn-in';
+            actionBtn.innerText = 'PROCEED CASH-IN';
+        }
+    }
+
+    function reviewTransaction() {
+        const type = document.getElementById('typeSelector').value;
         const mobile = document.getElementById('mobile').value.trim();
         const amount = document.getElementById('amount').value;
+        const qr_image = document.getElementById('qrImageInput').value.trim();
         const errorEl = document.getElementById('errorMsg');
         
         errorEl.innerText = "";
@@ -140,7 +163,7 @@
         if(mobile.length !== 11) return errorEl.innerText = "Enter a valid 11-digit mobile number";
         if(!amount || amount <= 0) return errorEl.innerText = "Enter a valid amount";
 
-        pendingTx = { type, amount, mobile, provider: 'GCash' };
+        pendingTx = { type, amount, mobile, qr_image: qr_image || null, provider: 'GCash' };
 
         document.getElementById('confirmType').innerText = type === 'deposit' ? 'Cash-In' : 'Cash-Out';
         document.getElementById('confirmType').style.color = type === 'deposit' ? '#059669' : '#DC2626';
@@ -175,27 +198,24 @@
                 document.getElementById('confirmUi').classList.remove('active-ui');
                 document.getElementById('waitUi').classList.add('active-ui');
                 
-                // Switch UI based on transaction type
                 if (data.checkout_url) {
-                    // --- PAYMONGO CASH-OUT ---
                     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.checkout_url)}`;
                     document.getElementById('waitTitle').innerText = "Scan to Pay";
-                    document.getElementById('waitDesc').innerText = "Open your GCash app and scan the QR code to cash out.";
+                    document.getElementById('waitDesc').innerText = "Open your GCash app and scan the QR code.";
                     document.getElementById('waitType').innerText = "SCAN TO PAY (CASH-OUT)";
                     
                     document.getElementById('qrContainer').innerHTML = `<img src="${qrUrl}" style="border-radius: 8px; border: 3px solid #007EE5; width: 160px; height: 160px; padding: 5px; background: white; margin: 0 auto; display: block;">`;
                     document.getElementById('qrContainer').style.display = 'block';
                     document.getElementById('cashInSpinner').style.display = 'none';
-                    document.getElementById('pollingStatus').innerText = "⏳ Waiting for PayMongo payment...";
+                    document.getElementById('pollingStatus').innerText = "⏳ Waiting for payment verification...";
                 } else {
-                    // --- DIRECT CASH-IN (NO OTP) ---
                     document.getElementById('waitTitle').innerText = "Request Sent!";
-                    document.getElementById('waitDesc').innerText = "Please hand the cash to the cashier. They are processing your transfer now.";
-                    document.getElementById('waitType').innerText = "PROCESSING CASH-IN";
+                    document.getElementById('waitDesc').innerText = "Please wait while the cashier handles your transfer.";
+                    document.getElementById('waitType').innerText = `PROCESSING ${pendingTx.type.toUpperCase()}`;
                     
                     document.getElementById('qrContainer').style.display = 'none';
                     document.getElementById('cashInSpinner').style.display = 'block';
-                    document.getElementById('pollingStatus').innerText = "⏳ Waiting for cashier to complete transfer...";
+                    document.getElementById('pollingStatus').innerText = "⏳ Waiting for merchant confirmation...";
                 }
 
                 document.getElementById('displayAmt').innerText = pendingTx.amount;
@@ -259,7 +279,6 @@
             <div style="font-size:10px; color:#9CA3AF; text-align:center;">
                 Date: ${tx.date}<br>Ref: ${tx.reference_id}
             </div>
-            
             ${attachedImageHtml}
         `;
     }

@@ -1,0 +1,14 @@
+{"_e":"root:init","_t":1788016077302,"format":"v0-jsonl","version":"57.0.20"}
+{"_e":"env:mode","_t":1788016077303,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1788016077307,"mode":"development","files":["../..\\..\\.env"],"env":{"PAYMONGO_SECRET_KEY":"sk_test_ktesnPmh7TTdjdekqkUWhLPb"}}
+{"_e":"devserver:start","_t":1788016077598,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1788016077991,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1788016078299,"plugins":[]}
+{"_e":"metro:instantiate","_t":1788016084779,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"root:init","_t":1788016095153,"format":"v0-jsonl","version":"57.0.20"}
+{"_e":"env:mode","_t":1788016095154,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1788016095157,"mode":"development","files":["../..\\..\\.env"],"env":{"PAYMONGO_SECRET_KEY":"sk_test_ktesnPmh7TTdjdekqkUWhLPb"}}
+{"_e":"devserver:start","_t":1788016095432,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1788016095834,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1788016096114,"plugins":[]}
+{"_e":"metro:instantiate","_t":1788016102597,"atlas":false,"workers":8,"host":"::","port":8081}
