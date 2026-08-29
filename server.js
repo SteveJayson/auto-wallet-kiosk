@@ -125,3 +125,28 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+// ==========================================
+// NEW: HISTORY MANAGEMENT ENDPOINTS
+// ==========================================
+
+// 6. Fetch Completed History (Newest first)
+app.get("/api/merchant/history", (req, res) => {
+    const history = transactions.filter(t => t.status === "completed").reverse();
+    res.json(history);
+});
+
+// 7. Delete a single transaction from history
+app.delete("/api/merchant/history/:refId", (req, res) => {
+    const refId = req.params.refId;
+    // Keep all transactions EXCEPT the one that matches this ID
+    transactions = transactions.filter(t => t.reference_id !== refId);
+    res.json({ success: true, message: "Transaction deleted" });
+});
+
+// 8. Clear ALL history
+app.delete("/api/merchant/history", (req, res) => {
+    // Keep only the pending transactions, wiping out the completed ones
+    transactions = transactions.filter(t => t.status !== "completed");
+    res.json({ success: true, message: "All history cleared" });
+});
