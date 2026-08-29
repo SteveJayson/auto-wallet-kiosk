@@ -120,51 +120,58 @@
 <script>
     let currentRefId = ""; 
     let currentTab = 'queue';
-    let previousQueueCount = 0;
+    let lastAlarmedCount = 0; // FIX: Prevents the refresh bug
     
     // Alert Variables
     let alertsEnabled = false;
     let globalAudioCtx = null; 
-    let alarmInterval = null; // Keeps track of the continuous looping beep
+    let alarmInterval = null; 
 
-    // --- CONTINUOUS ALARM LOGIC ---
+    // --- BULLETPROOF ALARM LOGIC ---
     function enableAlerts() {
-        if ("Notification" in window) {
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    alertsEnabled = true;
-                    const btn = document.getElementById('alertBtn');
-                    btn.classList.add('active');
-                    btn.innerText = "🔔 Alerts ON";
-                }
-            });
-        }
+        // 1. Immediately turn on the alarm flag so the AUDIO works no matter what happens
+        alertsEnabled = true;
+        const btn = document.getElementById('alertBtn');
+        btn.classList.add('active');
+        btn.innerText = "🔔 Alerts ON";
+
+        // 2. Try to ask for desktop popups (Wrapped in a try/catch so it never crashes the page)
+        try {
+            if (window.Notification && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        } catch(e) { console.log("Desktop popups blocked, but audio will still work."); }
         
+        // 3. Safely unlock the browser's audio engine
         if (!globalAudioCtx) {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             globalAudioCtx = new AudioContext();
         }
         
+        // Play a silent sound to prove to the browser that we clicked the button
         playAlertSound(true); 
+
+        // 4. Force a queue check immediately
+        fetchQueue();
     }
 
     function triggerNewRequestAlert(amount, type) {
-        if (!alertsEnabled || alarmInterval !== null) return; // Don't trigger if already ringing
+        if (!alertsEnabled || alarmInterval !== null) return; 
 
-        // 1. Show Desktop Popup
-        if ("Notification" in window && Notification.permission === "granted") {
-            try {
+        // Try to show Desktop Popup
+        try {
+            if (window.Notification && Notification.permission === "granted") {
                 new Notification("New Kiosk Request! 🚨", {
                     body: `A customer requested a ${type} for ₱${amount.toFixed(2)}.`,
                     icon: "https://upload.wikimedia.org/wikipedia/commons/5/52/GCash_logo.svg"
                 });
-            } catch(e) { console.log(e); }
-        }
+            }
+        } catch(e) {}
 
-        // 2. Drop down the big red STOP ALARM banner
+        // Drop down the big red STOP ALARM banner
         document.getElementById('alarmBanner').style.display = 'block';
 
-        // 3. Start the continuous, annoying looping alarm! (Every 1.5 seconds)
+        // Start the continuous, annoying looping alarm!
         playAlertSound(); 
         alarmInterval = setInterval(() => {
             playAlertSound();
@@ -172,12 +179,10 @@
     }
 
     function stopAlarm() {
-        // Stop the loop
         if (alarmInterval !== null) {
             clearInterval(alarmInterval);
             alarmInterval = null;
         }
-        // Hide the banner
         document.getElementById('alarmBanner').style.display = 'none';
     }
 
@@ -192,15 +197,14 @@
             const osc = globalAudioCtx.createOscillator();
             const gainNode = globalAudioCtx.createGain();
             
-            osc.type = 'square'; // Changed to 'square' wave to sound more like a harsh alarm/beeper
+            osc.type = 'square'; 
             osc.frequency.setValueAtTime(800, globalAudioCtx.currentTime); 
-            
-            gainNode.gain.setValueAtTime(isSilentAuth ? 0.01 : 0.15, globalAudioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(isSilentAuth ? 0.001 : 0.15, globalAudioCtx.currentTime); 
             
             osc.connect(gainNode);
             gainNode.connect(globalAudioCtx.destination);
             osc.start();
-            osc.stop(globalAudioCtx.currentTime + 0.3); // Beep lasts slightly longer (0.3s)
+            osc.stop(globalAudioCtx.currentTime + 0.3); 
         } catch (e) {
             console.log("Audio not supported");
         }
@@ -227,6 +231,7 @@
             const res = await fetch('/api/merchant/queue');
             const queue = await res.json();
             
+            // UI Updates
             document.getElementById('queueCount').innerText = queue.length;
             const queueList = document.getElementById('queueList');
             
@@ -247,15 +252,19 @@
                 });
             }
 
-            // TRIGGER CONTINUOUS ALARM SECOND
-            if (queue.length > previousQueueCount) {
-                const newestRequest = queue[queue.length - 1]; 
-                triggerNewRequestAlert(newestRequest.amount, newestRequest.type);
+            // FIX: Smart Alarm Trigger Logic
+            if (alertsEnabled) {
+                if (queue.length > lastAlarmedCount) {
+                    const newestRequest = queue[queue.length - 1]; 
+                    triggerNewRequestAlert(newestRequest.amount, newestRequest.type);
+                }
+                lastAlarmedCount = queue.length; // Sync the count
+            } else {
+                lastAlarmedCount = 0; // If disabled, reset to 0 so it immediately rings when you turn it on
             }
-            previousQueueCount = queue.length;
             
         } catch (error) {
-            console.error("Failed to fetch queue:", error);
+            console.error("Failed to fetch queue.");
         }
     }
 
@@ -308,8 +317,7 @@
     }
 
     function openActionScreen(refId, mobile, amount) {
-        // Automatically stop the alarm if they click process
-        stopAlarm();
+        stopAlarm(); // Automatically shut up the alarm when you click process!
 
         currentRefId = refId;
         document.getElementById('activeMobile').innerText = mobile;
@@ -398,6 +406,11 @@
         document.getElementById('fileLabel').style.color = "#9CA3AF";
         document.getElementById('sendStatus').innerText = "";
     }
+
+    // NEW: Instantly refresh the queue if you switch back to this tab
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") fetchQueue();
+    });
 
     setInterval(fetchQueue, 3000);
     fetchQueue();
