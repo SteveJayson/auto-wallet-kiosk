@@ -151,6 +151,17 @@ app.delete("/api/merchant/history", (req, res) => {
     res.json({ success: true });
 });
 
+// ==========================================
+// SERVE THE HTML PAGES (This fixes the 500 Error!)
+// ==========================================
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/merchant', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'merchant.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
