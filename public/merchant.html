@@ -136,8 +136,10 @@
     function triggerNewRequestAlert(amount, type) {
         if (!alertsEnabled) return;
 
+        // 1. Play the sound first
         playAlertSound();
 
+        // 2. Show the smooth slide-in notification
         if ("Notification" in window && Notification.permission === "granted") {
             try {
                 new Notification("New Kiosk Request! 🔔", {
@@ -146,6 +148,13 @@
                 });
             } catch(e) { console.log(e); }
         }
+
+        // 3. NEW: The Brute-Force Browser Alert
+        // We put a tiny 300-millisecond delay here so the browser has time 
+        // to start playing the "Ding!" sound before the alert() freezes the screen.
+        setTimeout(() => {
+            alert(`🔔 NEW KIOSK REQUEST!\n\nType: ${type.toUpperCase()}\nAmount: ₱${amount.toFixed(2)}\n\nPlease check the live queue.`);
+        }, 300);
     }
 
     function playAlertSound(isSilentAuth = false) {
