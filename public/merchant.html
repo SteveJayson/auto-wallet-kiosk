@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merchant App Dashboard</title>
+    <title>Merchant Dashboard</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111827; color: white; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;}
         .dashboard { background: #1F2937; padding: 30px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative; }
@@ -12,38 +12,29 @@
         .tab-btn { background: transparent; color: #9CA3AF; border: none; font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 10px; transition: 0.2s;}
         .tab-btn.active { color: #10B981; border-bottom: 2px solid #10B981; }
         
-        .btn-alert { background: #374151; color: white; border: 1px solid #4B5563; font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer; margin-left: auto; display: flex; align-items: center; gap: 5px;}
-        .btn-alert.active { background: #10B981; border-color: #059669; }
+        .btn-alert { background: #10B981; color: white; border: none; font-size: 12px; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: auto; font-weight: bold;}
 
-        #alarmBanner { display: none; background: #EF4444; padding: 20px; text-align: center; margin-bottom: 20px; border-radius: 8px; animation: pulseRed 1s infinite alternate; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+        #alarmBanner { display: none; background: #EF4444; padding: 20px; text-align: center; margin-bottom: 20px; border-radius: 8px; animation: pulseRed 1s infinite alternate; }
         @keyframes pulseRed { from { background: #EF4444; } to { background: #DC2626; } }
-        .btn-stop-alarm { background: white; color: #EF4444; width: 100%; padding: 15px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        .btn-stop-alarm:active { transform: scale(0.98); }
+        .btn-stop-alarm { background: white; color: #EF4444; width: 100%; padding: 15px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; }
 
         .queue-card { background: #374151; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #10B981; display: flex; justify-content: space-between; align-items: center; }
         .queue-info h3 { margin: 0 0 5px 0; font-size: 20px; }
         .queue-info p { margin: 0; color: #9CA3AF; font-size: 14px; }
         
         .history-card { border-left: 5px solid #4B5563; opacity: 0.8; }
-        .btn-trash { background: #EF4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .btn-clear-all { background: transparent; color: #EF4444; border: 1px solid #EF4444; width: 100%; padding: 10px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-clear-all:hover { background: #EF4444; color: white; }
+        .btn-trash { background: #EF4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+        .btn-clear-all { background: transparent; color: #EF4444; border: 1px solid #EF4444; width: 100%; padding: 10px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; font-weight: bold; }
 
         input[type="text"].greeting-input { width: 100%; padding: 15px; font-size: 16px; border-radius: 8px; border: none; background: #374151; color: white; margin-top: 15px; box-sizing: border-box;}
-        
         .file-upload-wrapper { margin-top: 20px; margin-bottom: 15px; text-align: left; }
         .file-upload-label { display: block; background: #374151; padding: 12px; border-radius: 8px; font-size: 14px; text-align: center; cursor: pointer; color: #9CA3AF; border: 1px dashed #6B7280; }
-        .file-upload-label:hover { background: #4B5563; color: white; }
         input[type="file"] { display: none; }
         
-        button { padding: 10px 15px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; transition: 0.1s;}
-        button:active { transform: scale(0.98); }
+        button { padding: 10px 15px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; }
         .btn-green { background: #10B981; }
         .btn-blue { background: #3B82F6; width: 100%; padding: 15px; font-size: 16px; margin-top: 15px;}
         .btn-cancel { background: transparent; color: #9CA3AF; border: 1px solid #6B7280; width: 100%; padding: 15px; margin-top: 10px; }
-        
-        .micro-copy-btn { background: #111827; color: #9CA3AF; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; width: auto; margin-left: 10px; display: inline-flex; align-items: center; justify-content: center;}
-        .micro-copy-btn:hover { background: #4B5563; color: white; }
 
         #actionScreen, #historyScreen { display: none; }
     </style>
@@ -52,12 +43,11 @@
 
 <div class="dashboard" id="mainDashboard">
     <div class="tab-container">
-        <button class="tab-btn active" id="tabQueue" onclick="switchTab('queue')">Queue <span id="queueCount" style="background: #10B981; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">0</span></button>
+        <button class="tab-btn active" id="tabQueue" onclick="switchTab('queue')">Queue <span id="queueCount" style="background: #10B981; padding: 2px 6px; border-radius: 10px; font-size: 10px;">0</span></button>
         <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">History</button>
-        <button class="btn-alert" id="alertBtn" onclick="enableAlerts()">🔔 Connect App</button>
+        <button class="btn-alert" onclick="activateApp()">🔊 Active Audio</button>
     </div>
 
-    <!-- CONTINUOUS ALARM BANNER -->
     <div id="alarmBanner">
         <h3 style="margin: 0; color: white; font-size: 22px;">🚨 NEW REQUEST WAITING 🚨</h3>
         <p style="margin: 5px 0 0 0; color: #FCA5A5;">A customer is waiting at the kiosk!</p>
@@ -65,28 +55,20 @@
     </div>
 
     <div id="queueScreen">
-        <div id="queueList">
-            <p style="text-align: center; color: #9CA3AF;">No pending requests.</p>
-        </div>
+        <div id="queueList"><p style="text-align: center; color: #9CA3AF;">No pending requests.</p></div>
     </div>
 
     <div id="historyScreen">
         <button class="btn-clear-all" id="clearAllBtn" onclick="clearAllHistory()" style="display: none;">🗑️ Clear All History</button>
-        <div id="historyList">
-            <p style="text-align: center; color: #9CA3AF;">No completed transactions yet.</p>
-        </div>
+        <div id="historyList"><p style="text-align: center; color: #9CA3AF;">No completed transactions yet.</p></div>
     </div>
 </div>
 
 <div class="dashboard" id="actionScreen">
     <h3 style="margin-top:0; color:#10B981;">Process Cash-In</h3>
     <div style="background: #111827; padding: 15px; border-radius: 8px; border: 1px solid #374151; margin-bottom: 15px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
-            <span style="color:#9CA3AF;">Mobile:</span> 
-            <div style="display:flex; align-items:center;">
-                <strong id="activeMobile" style="font-size: 18px;"></strong>
-                <button class="micro-copy-btn" id="copyBtn">📋</button>
-            </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+            <span style="color:#9CA3AF;">Mobile:</span> <strong id="activeMobile" style="font-size: 18px;"></strong>
         </div>
         <div style="display:flex; justify-content:space-between;">
             <span style="color:#9CA3AF;">Amount:</span> <strong id="activeAmount" style="font-size: 18px; color: #10B981;"></strong>
@@ -99,7 +81,6 @@
     </div>
     
     <input type="text" id="greetingMsg" class="greeting-input" placeholder="Type a greeting (Optional)">
-    
     <button class="btn-blue" onclick="sendToCustomer()">COMPLETE & SEND TO CUSTOMER</button>
     <button class="btn-cancel" onclick="backToQueue()">Cancel</button>
     <div id="sendStatus" style="margin-top:15px; font-weight:bold; text-align:center; color:#10B981;"></div>
@@ -108,83 +89,44 @@
 <script>
     let currentRefId = ""; 
     let currentTab = 'queue';
-    let lastAlarmedCount = 0; 
-    
-    // 1. Check phone memory to see if alerts were already enabled!
-    let alertsEnabled = localStorage.getItem("kiosk_alerts") === "true";
-    let globalAudioCtx = null; 
-    let alarmInterval = null; 
+    let lastCount = 0;
+    let audioCtx = null;
+    let alarmInterval = null;
 
-    // --- AUTO-RESTORE UI ON LOAD ---
-    window.addEventListener('DOMContentLoaded', () => {
-        if (alertsEnabled) {
-            const btn = document.getElementById('alertBtn');
-            btn.classList.add('active');
-            btn.innerText = "🟢 Alerts Active";
+    function activateApp() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
-    });
-
-    // --- INVISIBLE AUDIO UNLOCKER ---
-    // The phone requires ONE tap anywhere on the screen to unlock sound.
-    // This listens for your very first tap and silently prepares the audio engine.
-    document.body.addEventListener('click', () => {
-        if (!globalAudioCtx) {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            globalAudioCtx = new AudioContext();
-        }
-        if (globalAudioCtx.state === 'suspended') {
-            globalAudioCtx.resume();
-        }
-    }, { once: true }); // "once: true" means this invisible listener deletes itself after 1 tap
-
-    // --- ZERO-DELAY ALARM & VIBRATION LOGIC ---
-    function enableAlerts() {
-        alertsEnabled = true;
-        localStorage.setItem("kiosk_alerts", "true"); // Save to phone memory
-
-        const btn = document.getElementById('alertBtn');
-        btn.classList.add('active');
-        btn.innerText = "🟢 Alerts Active";
-
-        try {
-            if (window.Notification && Notification.permission !== "granted" && Notification.permission !== "denied") {
-                Notification.requestPermission();
-            }
-        } catch(e) {}
-        
-        if (!globalAudioCtx) {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            globalAudioCtx = new AudioContext();
-        }
-        
-        playAlertSound(true); 
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        playBeep(0.01);
+        alert("Audio engine activated successfully!");
         fetchQueue();
     }
 
-    function triggerNewRequestAlert(amount, type) {
-        if (!alertsEnabled || alarmInterval !== null) return; 
-
-        // 1. Notifications
+    function playBeep(volume = 0.2) {
+        if (!audioCtx) return;
         try {
-            if (window.Notification && Notification.permission === "granted") {
-                new Notification("New Kiosk Request! 🚨", {
-                    body: `A customer requested a ${type} for ₱${amount.toFixed(2)}.`,
-                    icon: "https://upload.wikimedia.org/wikipedia/commons/5/52/GCash_logo.svg"
-                });
-            }
-        } catch(e) {}
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        } catch (e) {}
+    }
 
-        // 2. Banner
+    function triggerAlarm() {
+        if (alarmInterval !== null) return;
         document.getElementById('alarmBanner').style.display = 'block';
-
-        // 3. Play Sound and Vibrate Phone immediately
-        playAlertSound(); 
-        if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]); 
-
-        // 4. Loop the alarm and vibration every 1.5 seconds!
+        playBeep(0.2);
+        if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
         alarmInterval = setInterval(() => {
-            playAlertSound();
-            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
+            playBeep(0.2);
+            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
         }, 1500);
     }
 
@@ -193,27 +135,8 @@
             clearInterval(alarmInterval);
             alarmInterval = null;
         }
-        if (navigator.vibrate) navigator.vibrate(0); // Immediately kills the vibration motor
+        if (navigator.vibrate) navigator.vibrate(0);
         document.getElementById('alarmBanner').style.display = 'none';
-    }
-
-    function playAlertSound(isSilentAuth = false) {
-        if (!globalAudioCtx) return;
-        try {
-            if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
-            
-            const osc = globalAudioCtx.createOscillator();
-            const gainNode = globalAudioCtx.createGain();
-            
-            osc.type = 'square'; 
-            osc.frequency.setValueAtTime(800, globalAudioCtx.currentTime); 
-            gainNode.gain.setValueAtTime(isSilentAuth ? 0.001 : 0.15, globalAudioCtx.currentTime); 
-            
-            osc.connect(gainNode);
-            gainNode.connect(globalAudioCtx.destination);
-            osc.start();
-            osc.stop(globalAudioCtx.currentTime + 0.3); 
-        } catch (e) {}
     }
 
     function switchTab(tab) {
@@ -222,21 +145,19 @@
         document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
         document.getElementById('queueScreen').style.display = tab === 'queue' ? 'block' : 'none';
         document.getElementById('historyScreen').style.display = tab === 'history' ? 'block' : 'none';
-        
         if (tab === 'queue') fetchQueue();
         if (tab === 'history') fetchHistory();
     }
 
     async function fetchQueue() {
-        if(document.getElementById('actionScreen').style.display === 'block' || currentTab !== 'queue') return;
+        if (document.getElementById('actionScreen').style.display === 'block' || currentTab !== 'queue') return;
         try {
             const res = await fetch('/api/merchant/queue');
             const queue = await res.json();
-            
             document.getElementById('queueCount').innerText = queue.length;
             const queueList = document.getElementById('queueList');
             
-            if(queue.length === 0) {
+            if (queue.length === 0) {
                 queueList.innerHTML = '<p style="text-align: center; color: #9CA3AF;">No pending requests.</p>';
             } else {
                 queueList.innerHTML = '';
@@ -253,71 +174,58 @@
                 });
             }
 
-            if (alertsEnabled) {
-                if (queue.length > lastAlarmedCount) {
-                    const newestRequest = queue[queue.length - 1]; 
-                    triggerNewRequestAlert(newestRequest.amount, newestRequest.type);
-                }
-                lastAlarmedCount = queue.length; 
-            } else {
-                lastAlarmedCount = 0; 
+            if (queue.length > lastCount) {
+                triggerAlarm();
             }
-        } catch (error) {}
+            lastCount = queue.length;
+        } catch (e) {}
     }
 
     async function fetchHistory() {
         try {
             const res = await fetch('/api/merchant/history');
             const history = await res.json();
-            
             const historyList = document.getElementById('historyList');
             const clearBtn = document.getElementById('clearAllBtn');
             
-            if(history.length === 0) {
+            if (history.length === 0) {
                 historyList.innerHTML = '<p style="text-align: center; color: #9CA3AF;">No completed transactions yet.</p>';
                 clearBtn.style.display = 'none';
             } else {
                 clearBtn.style.display = 'block';
                 historyList.innerHTML = '';
                 history.forEach(tx => {
-                    const typeColor = tx.type === 'deposit' ? '#10B981' : '#3B82F6';
                     historyList.innerHTML += `
                         <div class="queue-card history-card">
                             <div class="queue-info">
-                                <h3>₱${tx.amount.toFixed(2)} <span style="font-size:12px; color:${typeColor}; text-transform:uppercase;">(${tx.type})</span></h3>
-                                <p>${tx.mobile} | ${tx.date.split(',')[1]}</p>
+                                <h3>₱${tx.amount.toFixed(2)} <span style="font-size:12px; color:#10B981;">(${tx.type})</span></h3>
+                                <p>${tx.mobile} | ${tx.date}</p>
                             </div>
-                            <button class="btn-trash" onclick="deleteHistoryItem('${tx.reference_id}')">🗑️</button>
+                            <button class="btn-trash" onclick="deleteHistory('${tx.reference_id}')">🗑️</button>
                         </div>
                     `;
                 });
             }
-        } catch (error) {}
+        } catch (e) {}
     }
 
-    async function deleteHistoryItem(refId) {
-        if (!confirm("Are you sure you want to delete this transaction?")) return;
-        try { await fetch(`/api/merchant/history/${refId}`, { method: 'DELETE' }); fetchHistory(); } catch (error) {}
+    async function deleteHistory(refId) {
+        if (!confirm("Delete transaction?")) return;
+        await fetch(`/api/merchant/history/${refId}`, { method: 'DELETE' });
+        fetchHistory();
     }
 
     async function clearAllHistory() {
-        if (!confirm("⚠️ WARNING: This will permanently wipe all completed transactions. Continue?")) return;
-        try { await fetch(`/api/merchant/history`, { method: 'DELETE' }); fetchHistory(); } catch (error) {}
+        if (!confirm("Wipe all history?")) return;
+        await fetch(`/api/merchant/history`, { method: 'DELETE' });
+        fetchHistory();
     }
 
     function openActionScreen(refId, mobile, amount) {
-        stopAlarm(); 
+        stopAlarm();
         currentRefId = refId;
         document.getElementById('activeMobile').innerText = mobile;
         document.getElementById('activeAmount').innerText = `₱${amount.toFixed(2)}`;
-        
-        const copyBtn = document.getElementById('copyBtn');
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(mobile).then(() => {
-                copyBtn.innerText = "✅";
-                setTimeout(() => copyBtn.innerText = "📋", 2000);
-            });
-        };
         document.getElementById('mainDashboard').style.display = 'none';
         document.getElementById('actionScreen').style.display = 'block';
     }
@@ -325,66 +233,51 @@
     function backToQueue() {
         document.getElementById('actionScreen').style.display = 'none';
         document.getElementById('mainDashboard').style.display = 'block';
-        resetForm();
+        document.getElementById('greetingMsg').value = "";
+        document.getElementById('receiptImage').value = "";
+        document.getElementById('sendStatus').innerText = "";
     }
 
     function updateFileName() {
-        const fileInput = document.getElementById('receiptImage');
-        const label = document.getElementById('fileLabel');
-        if (fileInput.files.length > 0) {
-            label.innerHTML = `✅ Attached: ${fileInput.files[0].name}`;
-            label.style.borderColor = "#10B981"; label.style.color = "#10B981";
-        }
-    }
-
-    function fileToBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result); reader.onerror = error => reject(error);
-        });
+        const file = document.getElementById('receiptImage').files[0];
+        if (file) document.getElementById('fileLabel').innerText = `✅ Attached: ${file.name}`;
     }
 
     async function sendToCustomer() {
         const greeting = document.getElementById('greetingMsg').value.trim();
-        const fileInput = document.getElementById('receiptImage');
-        const statusEl = document.getElementById('sendStatus');
-        statusEl.innerText = "Sending..."; statusEl.style.color = "#10B981";
-        let base64String = null;
-        if (fileInput.files.length > 0) base64String = await fileToBase64(fileInput.files[0]);
+        const file = document.getElementById('receiptImage').files[0];
+        const status = document.getElementById('sendStatus');
+        status.innerText = "Sending...";
 
-        try {
-            const res = await fetch('/merchant/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pin: "1234", reference_id: currentRefId, greeting: greeting, receipt_image: base64String }) 
+        let base64 = null;
+        if (file) {
+            base64 = await new Promise(res => {
+                const r = new FileReader();
+                r.onload = () => res(r.result);
+                r.readAsDataURL(file);
             });
-            if (res.ok) {
-                statusEl.innerText = "✅ Transaction Complete!";
-                setTimeout(() => { backToQueue(); fetchQueue(); }, 1500);
-            }
-        } catch (error) { statusEl.innerText = "Failed to send."; statusEl.style.color = "#EF4444"; }
-    }
-
-    function resetForm() {
-        document.getElementById('greetingMsg').value = ""; document.getElementById('receiptImage').value = ""; 
-        document.getElementById('fileLabel').innerHTML = "📸 Attach GCash Screenshot (Optional)";
-        document.getElementById('fileLabel').style.borderColor = "#6B7280"; document.getElementById('fileLabel').style.color = "#9CA3AF";
-        document.getElementById('sendStatus').innerText = "";
-    }
-
-    // ==========================================
-    // INSTANT LISTENER
-    // ==========================================
-    const evtSource = new EventSource('/api/merchant/stream');
-    evtSource.onmessage = function(event) {
-        if (event.data === "trigger") {
-            fetchQueue();
         }
-    };
 
-    setInterval(fetchQueue, 15000); 
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fetchQueue(); });
-    fetchQueue(); 
+        const res = await fetch('/merchant/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: "1234", reference_id: currentRefId, greeting, receipt_image: base64 })
+        });
+
+        if (res.ok) {
+            status.innerText = "✅ Sent!";
+            setTimeout(() => { backToQueue(); fetchQueue(); }, 1500);
+        } else {
+            status.innerText = "Failed to send.";
+        }
+    }
+
+    // Real-time EventSource Stream listener
+    const evt = new EventSource('/api/merchant/stream');
+    evt.onmessage = (e) => { if (e.data === "trigger") fetchQueue(); };
+
+    setInterval(fetchQueue, 800); // Safety backup poll
+    fetchQueue();
 </script>
 </body>
 </html>
