@@ -9,10 +9,14 @@
         .dashboard { background: #1F2937; padding: 30px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative; }
         
         /* Navigation Tabs */
-        .tab-container { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #374151; padding-bottom: 10px;}
+        .tab-container { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #374151; padding-bottom: 10px; align-items: center;}
         .tab-btn { background: transparent; color: #9CA3AF; border: none; font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 10px; transition: 0.2s;}
         .tab-btn.active { color: #10B981; border-bottom: 2px solid #10B981; }
         
+        /* Alert Button */
+        .btn-alert { background: #374151; color: white; border: 1px solid #4B5563; font-size: 12px; padding: 5px 10px; border-radius: 6px; cursor: pointer; margin-left: auto; display: flex; align-items: center; gap: 5px;}
+        .btn-alert.active { background: #10B981; border-color: #059669; }
+
         .queue-card { background: #374151; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #10B981; display: flex; justify-content: space-between; align-items: center; }
         .queue-info h3 { margin: 0 0 5px 0; font-size: 20px; }
         .queue-info p { margin: 0; color: #9CA3AF; font-size: 14px; }
@@ -50,6 +54,7 @@
     <div class="tab-container">
         <button class="tab-btn active" id="tabQueue" onclick="switchTab('queue')">Live Queue <span id="queueCount" style="background: #10B981; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">0</span></button>
         <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">History</button>
+        <button class="btn-alert" id="alertBtn" onclick="enableAlerts()">🔔 Enable Alerts</button>
     </div>
 
     <!-- Live Queue View -->
@@ -68,7 +73,7 @@
     </div>
 </div>
 
-<!-- Action View (Hidden by default, overlays when processing) -->
+<!-- Action View -->
 <div class="dashboard" id="actionScreen">
     <h3 style="margin-top:0; color:#10B981;">Process Cash-In</h3>
     <div style="background: #111827; padding: 15px; border-radius: 8px; border: 1px solid #374151; margin-bottom: 15px;">
@@ -102,19 +107,73 @@
 <script>
     let currentRefId = ""; 
     let currentTab = 'queue';
+    let previousQueueCount = 0;
+    let alertsEnabled = false;
+
+    // --- NEW: ALERT NOTIFICATION LOGIC ---
+    function enableAlerts() {
+        if ("Notification" in window) {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    alertsEnabled = true;
+                    const btn = document.getElementById('alertBtn');
+                    btn.classList.add('active');
+                    btn.innerText = "🔔 Alerts ON";
+                }
+            });
+        }
+        
+        // Browsers require a sound to be played on a click event to unlock audio context
+        playAlertSound(true); 
+    }
+
+    function triggerNewRequestAlert(amount, type) {
+        if (!alertsEnabled) return;
+
+        // 1. Play Sound
+        playAlertSound();
+
+        // 2. Show Desktop Popup
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("New Kiosk Request! 🔔", {
+                body: `A customer requested a ${type} for ₱${amount.toFixed(2)}.`,
+                icon: "https://upload.wikimedia.org/wikipedia/commons/5/52/GCash_logo.svg"
+            });
+        }
+    }
+
+    function playAlertSound(isSilentAuth = false) {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime); // High pitch "Ding"
+            
+            // If it's just the permission click, play it silently
+            gainNode.gain.setValueAtTime(isSilentAuth ? 0.01 : 0.1, ctx.currentTime); 
+            
+            osc.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+        } catch (e) {
+            console.log("Audio not supported");
+        }
+    }
+    // -------------------------------------
 
     function switchTab(tab) {
         currentTab = tab;
         
-        // Update tab styling
         document.getElementById('tabQueue').classList.toggle('active', tab === 'queue');
         document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
         
-        // Update visible screens
         document.getElementById('queueScreen').style.display = tab === 'queue' ? 'block' : 'none';
         document.getElementById('historyScreen').style.display = tab === 'history' ? 'block' : 'none';
         
-        // Fetch fresh data based on tab
         if (tab === 'queue') fetchQueue();
         if (tab === 'history') fetchHistory();
     }
@@ -128,6 +187,13 @@
             
             document.getElementById('queueCount').innerText = queue.length;
             const queueList = document.getElementById('queueList');
+            
+            // Check if a NEW request arrived
+            if (queue.length > previousQueueCount) {
+                const newestRequest = queue[queue.length - 1]; // Get the latest one
+                triggerNewRequestAlert(newestRequest.amount, newestRequest.type);
+            }
+            previousQueueCount = queue.length;
             
             if(queue.length === 0) {
                 queueList.innerHTML = '<p style="text-align: center; color: #9CA3AF;">No pending requests.</p>';
@@ -150,6 +216,7 @@
         }
     }
 
+    // --- (The rest of your history, file upload, and process functions remain exactly the same below) ---
     async function fetchHistory() {
         try {
             const res = await fetch('/api/merchant/history');
@@ -184,24 +251,18 @@
 
     async function deleteHistoryItem(refId) {
         if (!confirm("Are you sure you want to delete this transaction from history?")) return;
-        
         try {
             await fetch(`/api/merchant/history/${refId}`, { method: 'DELETE' });
-            fetchHistory(); // Refresh the list
-        } catch (error) {
-            alert("Failed to delete item.");
-        }
+            fetchHistory(); 
+        } catch (error) { alert("Failed to delete item."); }
     }
 
     async function clearAllHistory() {
-        if (!confirm("⚠️ WARNING: This will permanently wipe all completed transactions from your server. Continue?")) return;
-        
+        if (!confirm("⚠️ WARNING: This will permanently wipe all completed transactions. Continue?")) return;
         try {
             await fetch(`/api/merchant/history`, { method: 'DELETE' });
-            fetchHistory(); // Refresh the list
-        } catch (error) {
-            alert("Failed to clear history.");
-        }
+            fetchHistory(); 
+        } catch (error) { alert("Failed to clear history."); }
     }
 
     function openActionScreen(refId, mobile, amount) {
@@ -293,7 +354,6 @@
         document.getElementById('sendStatus').innerText = "";
     }
 
-    // Auto-refresh queue every 3 seconds (only affects the Queue tab)
     setInterval(fetchQueue, 3000);
     fetchQueue();
 </script>
