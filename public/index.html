@@ -23,7 +23,6 @@
         #mainUi, #confirmUi, #waitUi, #receiptUi { display: none; }
         .active-ui { display: block !important; }
 
-        /* Help Modal Styles */
         .help-btn { position: absolute; top: 20px; right: 20px; width: 35px; height: 35px; border-radius: 50%; background: #E5E7EB; color: #4B5563; padding: 0; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .help-btn:hover { background: #D1D5DB; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(2px); }
@@ -33,13 +32,8 @@
         .modal-content ol { padding-left: 20px; margin: 0; color: #4B5563; font-size: 15px; line-height: 1.6; }
         .modal-content li { margin-bottom: 10px; }
         
-        /* Brand Header Styles */
         .brand-header { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 25px; margin-top: 5px; }
         .brand-logo { height: 32px; width: auto; object-fit: contain; }
-        
-        /* Copy Button */
-        .copy-btn { background: #E5E7EB; color: #4B5563; padding: 6px 12px; font-size: 12px; border-radius: 20px; margin: 5px auto 0; width: auto; display: block; box-shadow: none; font-weight: normal; }
-        .copy-btn:hover { background: #D1D5DB; }
     </style>
 </head>
 <body>
@@ -78,24 +72,29 @@
             </div>
         </div>
 
-        <button class="btn-in" onclick="proceedTransaction()">Yes, Generate Ticket</button>
-        <button class="btn-cancel" onclick="cancelTransaction()">No, Edit Details</button>
+        <button class="btn-in" onclick="proceedTransaction()">Confirm Details</button>
+        <button class="btn-cancel" onclick="cancelTransaction()">Back to Edit</button>
         <div id="confirmErrorMsg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></div>
     </div>
 
     <div id="waitUi">
-        <h3>Show this to Cashier</h3>
-        <p style="color:#6B7280; font-size:14px;">Please hand cash/send GCash to the cashier to complete.</p>
+        <h3 id="waitTitle">Processing...</h3>
+        <p style="color:#6B7280; font-size:14px;" id="waitDesc">Please wait a moment.</p>
+        
         <div class="ticket-box">
-            <div style="font-size:12px; color:#6B7280; text-transform:uppercase;" id="waitType"></div>
+            <div style="font-size:12px; color:#6B7280; text-transform:uppercase; margin-bottom: 10px;" id="waitType"></div>
             
-            <div style="font-size:50px; font-weight:bold; color:var(--primary); letter-spacing: 5px; margin-top:10px;" id="displayCode"></div>
+            <!-- PayMongo QR Code Container -->
+            <div id="qrContainer" style="display:none;"></div>
             
-            <button class="copy-btn" id="copyBtn" onclick="copyToClipboard('displayCode', this)">📋 Copy Code</button>
+            <!-- Cash-In Spinner Container -->
+            <div id="cashInSpinner" style="display:none; margin: 20px 0;">
+                <div style="font-size: 45px; animation: slideDown 1s infinite alternate;">⏳</div>
+            </div>
             
             <div style="font-size:18px; font-weight:bold; margin-top:15px;">₱<span id="displayAmt"></span></div>
         </div>
-        <div style="margin-top:20px; font-size:14px; color:#059669;" id="pollingStatus">⏳ Waiting for cashier approval...</div>
+        <div style="margin-top:20px; font-size:14px; color:#059669; font-weight: bold;" id="pollingStatus"></div>
     </div>
 
     <div id="receiptUi">
@@ -113,9 +112,8 @@
         <ol>
             <li>Select <b>Cash-In</b> (to deposit) or <b>Cash-Out</b> (to withdraw).</li>
             <li>Enter your exact <b>11-digit GCash number</b> and the <b>Amount</b>.</li>
-            <li>Review your details to make sure they are correct.</li>
-            <li>For Cash-In, show the cashier your 3-digit code. For Cash-Out, scan the PayMongo QR Code to pay!</li>
-            <li>Wait a moment for your official digital receipt to appear.</li>
+            <li>Review your details and hit Confirm.</li>
+            <li>For Cash-In, hand the physical cash to the cashier. For Cash-Out, scan the QR code to pay!</li>
         </ol>
     </div>
 </div>
@@ -123,22 +121,6 @@
 <script>
     let currentPoller = null;
     let pendingTx = null; 
-
-    function copyToClipboard(elementId, btn) {
-        const text = document.getElementById(elementId).innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            const originalText = btn.innerText;
-            btn.innerText = "✅ Copied!";
-            btn.style.background = "#D1FAE5"; 
-            btn.style.color = "#065F46";
-            
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.style.background = "#E5E7EB";
-                btn.style.color = "#4B5563";
-            }, 2000);
-        });
-    }
 
     function toggleModal(modalId, show) {
         document.getElementById(modalId).style.display = show ? 'flex' : 'none';
@@ -177,7 +159,7 @@
 
     async function proceedTransaction() {
         const errorEl = document.getElementById('confirmErrorMsg');
-        errorEl.innerText = "Generating ticket...";
+        errorEl.innerText = "Connecting to merchant...";
         errorEl.style.color = "#6B7280";
 
         try {
@@ -193,29 +175,34 @@
                 document.getElementById('confirmUi').classList.remove('active-ui');
                 document.getElementById('waitUi').classList.add('active-ui');
                 
-                // --- NEW PAYMONGO QR LOGIC ---
+                // Switch UI based on transaction type
                 if (data.checkout_url) {
-                    // Turn the PayMongo Link into a scannable QR Code
+                    // --- PAYMONGO CASH-OUT ---
                     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.checkout_url)}`;
+                    document.getElementById('waitTitle').innerText = "Scan to Pay";
+                    document.getElementById('waitDesc').innerText = "Open your GCash app and scan the QR code to cash out.";
                     document.getElementById('waitType').innerText = "SCAN TO PAY (CASH-OUT)";
-                    document.getElementById('displayCode').innerHTML = `<img src="${qrUrl}" style="border-radius: 8px; border: 3px solid #007EE5; width: 160px; height: 160px; padding: 5px; background: white; margin: 0 auto; display: block;">`;
                     
-                    // Hide the copy button because it's an image now
-                    document.getElementById('copyBtn').style.display = 'none';
+                    document.getElementById('qrContainer').innerHTML = `<img src="${qrUrl}" style="border-radius: 8px; border: 3px solid #007EE5; width: 160px; height: 160px; padding: 5px; background: white; margin: 0 auto; display: block;">`;
+                    document.getElementById('qrContainer').style.display = 'block';
+                    document.getElementById('cashInSpinner').style.display = 'none';
                     document.getElementById('pollingStatus').innerText = "⏳ Waiting for PayMongo payment...";
                 } else {
-                    // Standard Manual Cash-In Setup
-                    document.getElementById('waitType').innerText = 'CASH-IN TICKET';
-                    document.getElementById('displayCode').innerText = data.code;
-                    document.getElementById('copyBtn').style.display = 'block';
-                    document.getElementById('pollingStatus').innerText = "⏳ Waiting for cashier approval...";
+                    // --- DIRECT CASH-IN (NO OTP) ---
+                    document.getElementById('waitTitle').innerText = "Request Sent!";
+                    document.getElementById('waitDesc').innerText = "Please hand the cash to the cashier. They are processing your transfer now.";
+                    document.getElementById('waitType').innerText = "PROCESSING CASH-IN";
+                    
+                    document.getElementById('qrContainer').style.display = 'none';
+                    document.getElementById('cashInSpinner').style.display = 'block';
+                    document.getElementById('pollingStatus').innerText = "⏳ Waiting for cashier to complete transfer...";
                 }
 
                 document.getElementById('displayAmt').innerText = pendingTx.amount;
                 currentPoller = setInterval(() => checkStatus(data.reference_id), 2000);
             } else {
                 errorEl.style.color = "red";
-                errorEl.innerText = data.error || "Failed to generate ticket.";
+                errorEl.innerText = data.error || "Failed to connect.";
             }
         } catch (error) {
             errorEl.style.color = "red";

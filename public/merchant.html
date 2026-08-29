@@ -3,58 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cashier Dashboard</title>
+    <title>Live Merchant Dashboard</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111827; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;}
-        .dashboard { background: #1F2937; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative; }
-        input[type="text"] { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 8px; border: none; font-size: 24px; font-weight: bold; text-align: center; box-sizing: border-box; letter-spacing: 2px;}
-        input[type="text"].greeting-input { font-size: 16px; font-weight: normal; letter-spacing: normal; text-align: left; background: #374151; color: white; margin-top: 15px;}
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111827; color: white; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;}
+        .dashboard { background: #1F2937; padding: 30px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative; }
         
-        .file-upload-wrapper { margin-top: 10px; margin-bottom: 15px; text-align: left; }
+        .queue-card { background: #374151; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #10B981; display: flex; justify-content: space-between; align-items: center; }
+        .queue-info h3 { margin: 0 0 5px 0; font-size: 20px; }
+        .queue-info p { margin: 0; color: #9CA3AF; font-size: 14px; }
+        
+        input[type="text"].greeting-input { width: 100%; padding: 15px; font-size: 16px; border-radius: 8px; border: none; background: #374151; color: white; margin-top: 15px; box-sizing: border-box;}
+        
+        .file-upload-wrapper { margin-top: 20px; margin-bottom: 15px; text-align: left; }
         .file-upload-label { display: block; background: #374151; padding: 12px; border-radius: 8px; font-size: 14px; text-align: center; cursor: pointer; color: #9CA3AF; border: 1px dashed #6B7280; }
         .file-upload-label:hover { background: #4B5563; color: white; }
         input[type="file"] { display: none; }
         
-        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: white; transition: 0.1s;}
+        button { padding: 10px 15px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; color: white; transition: 0.1s;}
         button:active { transform: scale(0.98); }
         .btn-green { background: #10B981; }
-        .btn-blue { background: #3B82F6; }
+        .btn-blue { background: #3B82F6; width: 100%; padding: 15px; font-size: 16px; margin-top: 15px;}
+        .btn-cancel { background: transparent; color: #9CA3AF; border: 1px solid #6B7280; width: 100%; padding: 15px; margin-top: 10px; }
         
-        .receipt-box { background: #111827; padding: 20px; border-radius: 8px; border: 1px solid #374151; margin-top: 10px; text-align: left; }
-        #receiptScreen { display: none; }
-
-        /* Help Modal Styles (Dark Mode) */
-        .help-btn { position: absolute; top: 20px; right: 20px; width: 35px; height: 35px; border-radius: 50%; background: #374151; color: #9CA3AF; padding: 0; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .help-btn:hover { background: #4B5563; color: white; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(2px); }
-        .modal-content { background: #1F2937; padding: 25px; border-radius: 16px; width: 85%; max-width: 320px; text-align: left; position: relative; border: 1px solid #374151; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); animation: slideDown 0.2s ease-out; }
-        .close-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; color: #9CA3AF; width: auto; padding: 0; line-height: 1; margin: 0; box-shadow: none; }
-        .close-modal:hover { color: white; }
-        .modal-content ol { padding-left: 20px; margin: 0; color: #D1D5DB; font-size: 15px; line-height: 1.6; }
-        .modal-content li { margin-bottom: 10px; }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* New Micro Copy Button */
-        .micro-copy-btn { background: #374151; color: #9CA3AF; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; width: auto; margin: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: normal; }
+        .micro-copy-btn { background: #111827; color: #9CA3AF; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; width: auto; margin-left: 10px; display: inline-flex; align-items: center; justify-content: center;}
         .micro-copy-btn:hover { background: #4B5563; color: white; }
+
+        #actionScreen { display: none; }
     </style>
 </head>
 <body>
 
-<div class="dashboard" id="inputScreen">
-    <button class="help-btn" onclick="toggleModal('merchantHelp', true)">?</button>
-
-    <h2 style="margin-top:0;">Cashier Terminal</h2>
-    <p style="color:#9CA3AF; margin-bottom:25px; font-size: 14px;">Enter customer's OTP number inorder to proceed.</p>
+<!-- Queue View -->
+<div class="dashboard" id="queueScreen">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin:0;">Live Queue</h2>
+        <span id="queueCount" style="background: #10B981; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;">0</span>
+    </div>
     
-    <input type="text" id="ticketCode" placeholder="000" maxlength="3">
-    <button class="btn-green" onclick="approveTransaction()">VERIFY OTP</button>
-    <div id="status" style="margin-top:20px; font-weight:bold; min-height: 20px;"></div>
+    <div id="queueList">
+        <p style="text-align: center; color: #9CA3AF;">No pending requests.</p>
+    </div>
 </div>
 
-<div class="dashboard" id="receiptScreen">
-    <h3 style="margin-top:0; margin-bottom:5px; color:#10B981;">✅ OTP Verified</h3>
-    <div class="receipt-box" id="merchantReceipt"></div>
+<!-- Action View -->
+<div class="dashboard" id="actionScreen">
+    <h3 style="margin-top:0; color:#10B981;">Process Cash-In</h3>
+    <div style="background: #111827; padding: 15px; border-radius: 8px; border: 1px solid #374151; margin-bottom: 15px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+            <span style="color:#9CA3AF;">Mobile:</span> 
+            <div style="display:flex; align-items:center;">
+                <strong id="activeMobile" style="font-size: 18px;"></strong>
+                <button class="micro-copy-btn" id="copyBtn">📋</button>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+            <span style="color:#9CA3AF;">Amount:</span> <strong id="activeAmount" style="font-size: 18px; color: #10B981;"></strong>
+        </div>
+    </div>
     
     <div class="file-upload-wrapper">
         <label for="receiptImage" class="file-upload-label" id="fileLabel">
@@ -64,50 +69,71 @@
     </div>
     
     <input type="text" id="greetingMsg" class="greeting-input" placeholder="Type a greeting (Optional)">
-    <button class="btn-blue" onclick="sendToCustomer()">SEND TO CUSTOMER SCREEN</button>
     
-    <div id="sendStatus" style="margin-top:15px; font-weight:bold; min-height: 20px; color:#10B981;"></div>
-</div>
-
-<div id="merchantHelp" class="modal" onclick="closeOnBackground(event, 'merchantHelp')">
-    <div class="modal-content">
-        <button class="close-modal" onclick="toggleModal('merchantHelp', false)">×</button>
-        <h3 style="margin-top:0; color:#10B981; margin-bottom: 20px;">Cashier Guide</h3>
-        <ol>
-            <li>Receive the physical cash from the customer.</li>
-            <li>Ask for the <b>3-digit OTP Code</b> on their screen and type it here.</li>
-            <li>Click <b>VERIFY OTP</b> to pull up their transaction.</li>
-            <li><i>(Optional)</i> Upload the GCash proof of transfer and type a quick greeting.</li>
-            <li>Click <b>SEND TO CUSTOMER SCREEN</b> to finalize!</li>
-        </ol>
-    </div>
+    <button class="btn-blue" onclick="sendToCustomer()">COMPLETE & SEND TO CUSTOMER</button>
+    <button class="btn-cancel" onclick="backToQueue()">Cancel</button>
+    
+    <div id="sendStatus" style="margin-top:15px; font-weight:bold; text-align:center; color:#10B981;"></div>
 </div>
 
 <script>
     let currentRefId = ""; 
+    let queueLength = 0;
 
-    // --- New Copy Feature for Merchant ---
-    function copyText(text, btn) {
-        navigator.clipboard.writeText(text).then(() => {
-            const originalText = btn.innerText;
-            btn.innerText = "✅";
-            btn.style.background = "#10B981"; 
-            btn.style.color = "white";
+    // Fetch the live queue from the server
+    async function fetchQueue() {
+        if(document.getElementById('actionScreen').style.display === 'block') return; // Don't refresh while processing
+        
+        try {
+            const res = await fetch('/api/merchant/queue');
+            const queue = await res.json();
             
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.style.background = "#374151";
-                btn.style.color = "#9CA3AF";
-            }, 2000);
-        });
+            document.getElementById('queueCount').innerText = queue.length;
+            const queueList = document.getElementById('queueList');
+            
+            if(queue.length === 0) {
+                queueList.innerHTML = '<p style="text-align: center; color: #9CA3AF;">No pending requests.</p>';
+            } else {
+                queueList.innerHTML = '';
+                queue.forEach(tx => {
+                    queueList.innerHTML += `
+                        <div class="queue-card">
+                            <div class="queue-info">
+                                <h3>₱${tx.amount.toFixed(2)}</h3>
+                                <p>${tx.mobile} | ${tx.date.split(',')[1]}</p>
+                            </div>
+                            <button class="btn-green" onclick="openActionScreen('${tx.reference_id}', '${tx.mobile}', ${tx.amount})">PROCESS</button>
+                        </div>
+                    `;
+                });
+            }
+        } catch (error) {
+            console.error("Failed to fetch queue.");
+        }
     }
 
-    function toggleModal(modalId, show) {
-        document.getElementById(modalId).style.display = show ? 'flex' : 'none';
+    function openActionScreen(refId, mobile, amount) {
+        currentRefId = refId;
+        document.getElementById('activeMobile').innerText = mobile;
+        document.getElementById('activeAmount').innerText = `₱${amount.toFixed(2)}`;
+        
+        // Setup copy button
+        const copyBtn = document.getElementById('copyBtn');
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(mobile).then(() => {
+                copyBtn.innerText = "✅";
+                setTimeout(() => copyBtn.innerText = "📋", 2000);
+            });
+        };
+
+        document.getElementById('queueScreen').style.display = 'none';
+        document.getElementById('actionScreen').style.display = 'block';
     }
-    
-    function closeOnBackground(event, modalId) {
-        if(event.target.id === modalId) toggleModal(modalId, false);
+
+    function backToQueue() {
+        document.getElementById('actionScreen').style.display = 'none';
+        document.getElementById('queueScreen').style.display = 'block';
+        resetForm();
     }
 
     function updateFileName() {
@@ -129,63 +155,12 @@
         });
     }
 
-    async function approveTransaction() {
-        const code = document.getElementById('ticketCode').value.trim();
-        const statusEl = document.getElementById('status');
-        statusEl.style.color = "#EF4444"; 
-
-        if(!code || code.length !== 3) return statusEl.innerText = "Please enter a valid 3-digit code";
-        statusEl.innerText = "Verifying...";
-        statusEl.style.color = "white";
-
-        try {
-            const res = await fetch('/merchant/confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pin: "1234", code: code }) 
-            });
-            const data = await res.json();
-
-            if (res.ok) {
-                currentRefId = data.receipt.reference_id;
-                const tx = data.receipt;
-                const color = tx.type === 'deposit' ? '#10B981' : '#EF4444';
-                
-                // Embedded the micro copy button right next to the mobile number
-                document.getElementById('merchantReceipt').innerHTML = `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span style="color:#9CA3AF;">Type:</span> <strong style="color:${color}; text-transform:uppercase;">${tx.type}</strong>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
-                        <span style="color:#9CA3AF;">Mobile:</span> 
-                        <div style="display:flex; align-items:center; gap: 8px;">
-                            <strong>${tx.mobile}</strong>
-                            <button class="micro-copy-btn" onclick="copyText('${tx.mobile}', this)">📋</button>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <span style="color:#9CA3AF;">Amount:</span> <strong>₱${tx.amount.toFixed(2)}</strong>
-                    </div>
-                `;
-                
-                document.getElementById('inputScreen').style.display = 'none';
-                document.getElementById('receiptScreen').style.display = 'block';
-                document.getElementById('ticketCode').value = ""; 
-                statusEl.innerText = "";
-            } else {
-                statusEl.innerText = data.error || "Transaction failed.";
-            }
-        } catch (error) {
-            statusEl.innerText = "Cannot connect to server.";
-        }
-    }
-
     async function sendToCustomer() {
         const greeting = document.getElementById('greetingMsg').value.trim();
         const fileInput = document.getElementById('receiptImage');
         const statusEl = document.getElementById('sendStatus');
         
-        statusEl.innerText = "Sending... (may take a second for images)";
+        statusEl.innerText = "Sending...";
         statusEl.style.color = "#10B981";
 
         let base64String = null;
@@ -206,23 +181,30 @@
             });
 
             if (res.ok) {
-                statusEl.innerText = "✅ Sent to Customer!";
+                statusEl.innerText = "✅ Transaction Complete!";
                 setTimeout(() => {
-                    document.getElementById('receiptScreen').style.display = 'none';
-                    document.getElementById('inputScreen').style.display = 'block';
-                    document.getElementById('greetingMsg').value = "";
-                    fileInput.value = ""; 
-                    document.getElementById('fileLabel').innerHTML = "📸 Attach GCash Screenshot (Optional)";
-                    document.getElementById('fileLabel').style.borderColor = "#6B7280";
-                    document.getElementById('fileLabel').style.color = "#9CA3AF";
-                    statusEl.innerText = "";
-                }, 2000);
+                    backToQueue();
+                    fetchQueue();
+                }, 1500);
             }
         } catch (error) {
             statusEl.innerText = "Failed to send.";
             statusEl.style.color = "#EF4444";
         }
     }
+
+    function resetForm() {
+        document.getElementById('greetingMsg').value = "";
+        document.getElementById('receiptImage').value = ""; 
+        document.getElementById('fileLabel').innerHTML = "📸 Attach GCash Screenshot (Optional)";
+        document.getElementById('fileLabel').style.borderColor = "#6B7280";
+        document.getElementById('fileLabel').style.color = "#9CA3AF";
+        document.getElementById('sendStatus').innerText = "";
+    }
+
+    // Auto-refresh queue every 3 seconds
+    setInterval(fetchQueue, 3000);
+    fetchQueue();
 </script>
 </body>
 </html>
