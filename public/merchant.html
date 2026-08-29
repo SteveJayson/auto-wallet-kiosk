@@ -110,16 +110,41 @@
     let currentTab = 'queue';
     let lastAlarmedCount = 0; 
     
-    let alertsEnabled = false;
+    // 1. Check phone memory to see if alerts were already enabled!
+    let alertsEnabled = localStorage.getItem("kiosk_alerts") === "true";
     let globalAudioCtx = null; 
     let alarmInterval = null; 
+
+    // --- AUTO-RESTORE UI ON LOAD ---
+    window.addEventListener('DOMContentLoaded', () => {
+        if (alertsEnabled) {
+            const btn = document.getElementById('alertBtn');
+            btn.classList.add('active');
+            btn.innerText = "🟢 Alerts Active";
+        }
+    });
+
+    // --- INVISIBLE AUDIO UNLOCKER ---
+    // The phone requires ONE tap anywhere on the screen to unlock sound.
+    // This listens for your very first tap and silently prepares the audio engine.
+    document.body.addEventListener('click', () => {
+        if (!globalAudioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            globalAudioCtx = new AudioContext();
+        }
+        if (globalAudioCtx.state === 'suspended') {
+            globalAudioCtx.resume();
+        }
+    }, { once: true }); // "once: true" means this invisible listener deletes itself after 1 tap
 
     // --- ZERO-DELAY ALARM & VIBRATION LOGIC ---
     function enableAlerts() {
         alertsEnabled = true;
+        localStorage.setItem("kiosk_alerts", "true"); // Save to phone memory
+
         const btn = document.getElementById('alertBtn');
         btn.classList.add('active');
-        btn.innerText = "🟢 App Connected";
+        btn.innerText = "🟢 Alerts Active";
 
         try {
             if (window.Notification && Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -139,6 +164,7 @@
     function triggerNewRequestAlert(amount, type) {
         if (!alertsEnabled || alarmInterval !== null) return; 
 
+        // 1. Notifications
         try {
             if (window.Notification && Notification.permission === "granted") {
                 new Notification("New Kiosk Request! 🚨", {
@@ -148,13 +174,14 @@
             }
         } catch(e) {}
 
+        // 2. Banner
         document.getElementById('alarmBanner').style.display = 'block';
 
-        // Play Sound and Vibrate Phone immediately
+        // 3. Play Sound and Vibrate Phone immediately
         playAlertSound(); 
         if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]); 
 
-        // Loop the alarm and vibration every 1.5 seconds!
+        // 4. Loop the alarm and vibration every 1.5 seconds!
         alarmInterval = setInterval(() => {
             playAlertSound();
             if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
@@ -346,20 +373,18 @@
     }
 
     // ==========================================
-    // INSTANT LISTENER (Replaces the slow 3-second timer)
+    // INSTANT LISTENER
     // ==========================================
     const evtSource = new EventSource('/api/merchant/stream');
     evtSource.onmessage = function(event) {
         if (event.data === "trigger") {
-            // Server just yelled "WAKE UP!", instantly fetch the new data
             fetchQueue();
         }
     };
 
-    // Backup safety net: Just in case the internet cuts out, check quietly every 15 seconds
     setInterval(fetchQueue, 15000); 
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fetchQueue(); });
-    fetchQueue(); // Run once on load
+    fetchQueue(); 
 </script>
 </body>
 </html>
